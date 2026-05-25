@@ -23,7 +23,13 @@ workflows:
           cp /tmp/Info.plist.bak ios/Runner/Info.plist
 
       - name: Build iOS (no codesign — Sideloadly will sign)
-        script: flutter build ipa --release --no-codesign
+        script: |
+          flutter build ipa --release --no-codesign
+          # flutter skips IPA creation with --no-codesign; package manually from xcarchive
+          mkdir -p build/ios/ipa/Payload
+          cp -r "build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app" build/ios/ipa/Payload/
+          cd build/ios/ipa && zip -r splitwise_app.ipa Payload/ && cd -
+          rm -rf build/ios/ipa/Payload
 
     artifacts:
       - build/ios/ipa/*.ipa
