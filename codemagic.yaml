@@ -1,0 +1,38 @@
+workflows:
+  ios-release:
+    name: iOS Release (Sideloadly)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+
+      - name: Generate iOS project files
+        script: |
+          # Back up our custom Info.plist
+          cp ios/Runner/Info.plist /tmp/Info.plist.bak
+          # Generate the full Xcode project structure (xcodeproj, xcworkspace, AppDelegate, etc.)
+          flutter create --platforms=ios --project-name splitwise_app --org com.jeancarlosaman .
+          # Restore our custom Info.plist (camera, mic, speech permissions)
+          cp /tmp/Info.plist.bak ios/Runner/Info.plist
+
+      - name: Build iOS (no codesign — Sideloadly will sign)
+        script: flutter build ipa --release --no-codesign
+
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      email:
+        recipients:
+          - jeancarlosaman@gmail.com
+        notify:
+          success: true
+          failure: true
