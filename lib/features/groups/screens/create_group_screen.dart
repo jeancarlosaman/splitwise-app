@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../auth/providers/auth_provider.dart';
 import '../providers/groups_provider.dart';
-import '../../../shared/widgets/loading_overlay.dart';
+import '../../../core/theme.dart';
 
 class CreateGroupScreen extends ConsumerStatefulWidget {
   const CreateGroupScreen({super.key});
@@ -19,9 +18,10 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
   String _selectedEmoji = '💰';
   bool _isLoading = false;
 
-  static const _emojiOptions = [
-    '💰', '🍕', '🏠', '✈️', '🎉', '🍺', '🏕️', '🛒', '🎮', '💪',
-    '🌍', '🎵', '🚗', '🤝', '🍽️', '⚽', '🏖️', '🎓',
+  static const _emojis = [
+    '💰', '🍕', '🏖️', '✈️', '🏠', '🎉', '🎯', '🏔️',
+    '🚗', '🍺', '🎵', '🛒', '⚽', '🎮', '🍣', '🤝',
+    '🧳', '🎪', '🏋️', '🌍',
   ];
 
   @override
@@ -32,28 +32,19 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
-    FocusScope.of(context).unfocus();
-
-    final currentUserId = ref.read(currentUserIdProvider);
-    if (currentUserId == null) return;
-
     setState(() => _isLoading = true);
     try {
-      final group = await ref.read(groupsNotifierProvider.notifier).createGroup(
-            name:      _nameCtrl.text.trim(),
-            emoji:     _selectedEmoji,
-            createdBy: currentUserId,
+      final group = await ref.read(groupsProvider.notifier).createGroup(
+            name: _nameCtrl.text.trim(),
+            emoji: _selectedEmoji,
           );
-
-      if (mounted) {
-        context.go('/groups/${group.id}');
-      }
+      if (mounted) context.replace('/groups/${group.id}');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to create group: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
+            content: Text('Error: $e'),
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -64,107 +55,119 @@ class _CreateGroupScreenState extends ConsumerState<CreateGroupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return LoadingOverlay(
-      isLoading: _isLoading,
-      child: Scaffold(
-        appBar: AppBar(title: const Text('New Group')),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Emoji preview
-                Center(
-                  child: Container(
-                    width: 80,
-                    height: 80,
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('New Group'),
+        leading: IconButton(
+          icon: const Icon(Icons.close_rounded),
+          onPressed: () => context.pop(),
+        ),
+      ),
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            // ── Emoji preview ────────────────────────────────────
+            Center(
+              child: Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primary.withOpacity(0.35),
+                      blurRadius: 20,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(_selectedEmoji,
+                      style: const TextStyle(fontSize: 46)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 28),
+
+            // ── Icon picker ──────────────────────────────────────
+            Text('Choose an icon',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: _emojis.map((e) {
+                final selected = e == _selectedEmoji;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedEmoji = e),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: 54,
+                    height: 54,
                     decoration: BoxDecoration(
-                      color: cs.primaryContainer,
-                      borderRadius: BorderRadius.circular(20),
+                      gradient: selected ? AppTheme.primaryGradient : null,
+                      color: selected
+                          ? null
+                          : (isDark
+                              ? AppTheme.cardDark
+                              : const Color(0xFFF3F4F6)),
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: selected
+                          ? [
+                              BoxShadow(
+                                color: AppTheme.primary.withOpacity(0.35),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              )
+                            ]
+                          : null,
                     ),
                     child: Center(
-                      child: Text(
-                        _selectedEmoji,
-                        style: const TextStyle(fontSize: 40),
-                      ),
-                    ),
+                        child: Text(e,
+                            style: const TextStyle(fontSize: 24))),
                   ),
-                ),
-                const SizedBox(height: 20),
-
-                // Emoji picker
-                Text(
-                  'Choose an icon',
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: _emojiOptions.map((emoji) {
-                    final selected = emoji == _selectedEmoji;
-                    return GestureDetector(
-                      onTap: () => setState(() => _selectedEmoji = emoji),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 150),
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: selected
-                              ? cs.primaryContainer
-                              : cs.surfaceVariant,
-                          borderRadius: BorderRadius.circular(10),
-                          border: selected
-                              ? Border.all(color: cs.primary, width: 2)
-                              : null,
-                        ),
-                        child: Center(
-                          child: Text(
-                            emoji,
-                            style: const TextStyle(fontSize: 22),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 28),
-
-                // Name field
-                TextFormField(
-                  controller: _nameCtrl,
-                  textCapitalization: TextCapitalization.words,
-                  textInputAction: TextInputAction.done,
-                  onFieldSubmitted: (_) => _submit(),
-                  decoration: const InputDecoration(
-                    labelText: 'Group Name',
-                    hintText: 'e.g. Portugal Trip, Flat 4B, Pizza Gang',
-                    prefixIcon: Icon(Icons.group_outlined),
-                  ),
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) {
-                      return 'Enter a group name';
-                    }
-                    if (v.trim().length > 60) {
-                      return 'Name too long (max 60 characters)';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 32),
-
-                FilledButton.icon(
-                  onPressed: _isLoading ? null : _submit,
-                  icon: const Icon(Icons.check_rounded),
-                  label: const Text('Create Group'),
-                ),
-              ],
+                );
+              }).toList(),
             ),
-          ),
+            const SizedBox(height: 28),
+
+            // ── Name field ───────────────────────────────────────
+            Text('Group name',
+                style: Theme.of(context)
+                    .textTheme
+                    .titleSmall
+                    ?.copyWith(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _nameCtrl,
+              autofocus: true,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                hintText: 'e.g. Barcelona Trip 🌞',
+              ),
+              style: const TextStyle(
+                  fontWeight: FontWeight.w600, fontSize: 16),
+              validator: (v) => v != null && v.trim().isNotEmpty
+                  ? null
+                  : 'Enter a group name',
+            ),
+            const SizedBox(height: 36),
+
+            GradientButton(
+              label: 'Create Group',
+              icon: Icons.check_rounded,
+              onPressed: _isLoading ? null : _submit,
+              isLoading: _isLoading,
+            ),
+          ],
         ),
       ),
     );

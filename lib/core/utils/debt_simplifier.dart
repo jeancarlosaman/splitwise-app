@@ -1,159 +1,63 @@
-/// Simplifies a set of debts to the minimum number of transactions.
+/// Simplifies a set of debts into the minimum number of transactions.
 ///
-/// Algorithm:
-///   1. Compute net balance per person.
-///      Positive balance  → the person is owed money (creditor).
-///      Negative balance  → the person owes money (debtor).
-///   2. Greedily match the largest creditor with the largest debtor,
-///      create a settlement for min(|credit|, |debit|), then recurse.
-library debt_simplifier;
-
-/// A single suggested payment: [from] pays [amount] to [to].
-class Settlement {
-  final String fromUserId;
-  final String toUserId;
-  final double amount;
-
-  const Settlement({
-    required this.fromUserId,
-    required this.toUserId,
-    required this.amount,
-  });
-
-  @override
-  String toString() =>
-      'Settlement(from: $fromUserId → to: $toUserId, amount: $amount)';
-}
-
+/// Algorithm: greedy pairing of biggest creditor with biggest debtor.
+/// O(n log n) per iteration, good enough for group sizes < 100.
 class DebtSimplifier {
-  DebtSimplifier._();
-
-  /// Takes a map of {userId: netBalance} and returns the minimum set of
-  /// [Settlement]s that zeroes out all balances.
+  /// [balances] maps userId → net amount.
+  /// Positive = this person is owed money.
+  /// Negative = this person owes money.
   ///
-  /// [balances] must already be computed: positive = creditor, negative = debtor.
-  static List<Settlement> simplify(Map<String, double> balances) {
-    // Filter out near-zero balances (floating-point noise)
-    final net = Map<String, double>.fromEntries(
-      balances.entries.where((e) => e.value.abs() > 0.005),
-    );
-
-    final settlements = <Settlement>[];
-    _simplifyRecursive(net, settlements);
-    return settlements;
-  }
-
-  static void _simplifyRecursive(
-    Map<String, double> balances,
-    List<Settlement> out,
-  ) {
-    // Find the person who is owed the most (max creditor)
-    String? maxCreditorId;
-    double maxCredit = 0;
-
-    // Find the person who owes the most (max debtor)
-    String? maxDebtorId;
-    double maxDebt = 0;
+  /// Returns a list of [Payment] objects describing who pays whom how much.
+  static List<Payment> simplify(Map<String, double> balances) {
+    // Filter out near-zero balances (floating point noise)
+    final credits = <_Entry>[];
+    final debts = <_Entry>[];
 
     for (final entry in balances.entries) {
-      if (entry.value > maxCredit) {
-        maxCredit = entry.value;
-        maxCreditorId = entry.key;
-      }
-      if (entry.value < -maxDebt) {
-        maxDebt = -entry.value;
-        maxDebtorId = entry.key;
+      final rounded = double.parse(entry.value.toStringAsFixed(2));
+      if (rounded > 0.01) {
+        credits.add(_Entry(entry.key, rounded));
+      } else if (rounded < -0.01) {
+        debts.add(_Entry(entry.key, rounded.abs()));
       }
     }
 
-    // Base case: no more debts
-    if (maxCreditorId == null || maxDebtorId == null) return;
+    credits.sort((a, b) => b.amount.compareTo(a.amount));
+    debts.sort((a, b) => b.amount.compareTo(a.amount));
 
-    // The debtor pays the minimum of what they owe and what the creditor needs
-    final payAmount = maxCredit < maxDebt ? maxCredit : maxDebt;
-    final roundedAmount = (payAmount * 100).round() / 100;
+    final payments = <Payment>[];
 
-    if (roundedAmount > 0) {
-      out.add(Settlement(
-        fromUserId: maxDebtorId,
-        toUserId: maxCreditorId,
-        amount: roundedAmount,
-      ));
+    while (credits.isNotEmpty && debts.isNotEmpty) {
+      final credit = credits.first;
+      final debt = debts.first;
+
+      final amount = credit.amount < debt.amount ? credit.amount : debt.amount;
+      payments.add(Payment(from: debt.userId, to: credit.userId, amount: amount));
+
+      credit.amount -= amount;
+      debt.amount -= amount;
+
+      if (credit.amount < 0.01) credits.removeAt(0);
+      if (debt.amount < 0.01) debts.removeAt(0);
     }
 
-    // Update balances
-    balances[maxCreditorId] = (balances[maxCreditorId]! - payAmount);
-    balances[maxDebtorId]   = (balances[maxDebtorId]!  + payAmount);
-
-    // Remove settled-up parties
-    if (balances[maxCreditorId]!.abs() < 0.005) {
-      balances.remove(maxCreditorId);
-    }
-    if (balances[maxDebtorId]!.abs() < 0.005) {
-      balances.remove(maxDebtorId);
-    }
-
-    _simplifyRecursive(balances, out);
+    return payments;
   }
+}
 
-  /// Computes per-user net balances from a list of expense records.
-  ///
-  /// [expenses] is a list of maps with keys:
-  ///   - 'paid_by': userId who paid
-  ///   - 'participants': List<{'user_id': String, 'share_amount': double}>
-  static Map<String, double> computeNetBalances(
-    List<Map<String, dynamic>> expenses,
-  ) {
-    final net = <String, double>{};
+class _Entry {
+  final String userId;
+  double amount;
+  _Entry(this.userId, this.amount);
+}
 
-    for (final expense in expenses) {
-      final paidBy = expense['paid_by'] as String;
-      final participants =
-          (expense['participants'] as List<dynamic>).cast<Map<String, dynamic>>();
+class Payment {
+  final String from;
+  final String to;
+  final double amount;
 
-      for (final p in participants) {
-        final userId = p['user_id'] as String;
-        final share = (p['share_amount'] as num).toDouble();
+  const Payment({required this.from, required this.to, required this.amount});
 
-        if (userId == paidBy) {
-          // Payer is also a participant: net effect is (total - share) owed TO them
-          net[paidBy] = (net[paidBy] ?? 0) + share; // subtract their own share via loop
-        } else {
-          // This participant owes the payer
-          net[userId] = (net[userId] ?? 0) - share;
-          net[paidBy] = (net[paidBy] ?? 0) + share;
-        }
-      }
-
-      // Correct the double-counting for payer's own share
-      final payerParticipant = participants.firstWhere(
-        (p) => p['user_id'] == paidBy,
-        orElse: () => {},
-      );
-      if (payerParticipant.isNotEmpty) {
-        final payerShare = (payerParticipant['share_amount'] as num).toDouble();
-        net[paidBy] = (net[paidBy] ?? 0) - payerShare;
-      }
-    }
-
-    return net;
-  }
-
-  /// Simpler version: given a list of {userId, shareAmount} and the payer,
-  /// returns the delta map for a single expense.
-  static Map<String, double> deltasForExpense({
-    required String paidByUserId,
-    required double totalAmount,
-    required List<({String userId, double shareAmount})> participants,
-  }) {
-    final deltas = <String, double>{};
-
-    for (final p in participants) {
-      if (p.userId == paidByUserId) continue; // payer owes nothing to themselves
-      deltas[p.userId] = (deltas[p.userId] ?? 0) - p.shareAmount;
-      deltas[paidByUserId] = (deltas[paidByUserId] ?? 0) + p.shareAmount;
-    }
-
-    return deltas;
-  }
+  @override
+  String toString() => 'Payment($from → $to: $amount)';
 }

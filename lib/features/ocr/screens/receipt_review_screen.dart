@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
 
-import '../receipt_parser.dart';
-import '../../groups/models/group_member.dart';
 import '../../expenses/models/receipt_item.dart';
+import '../../groups/models/group_member.dart';
 import '../../../core/utils/currency_utils.dart';
+import '../../../core/theme.dart';
+import '../../../shared/widgets/user_avatar.dart';
 
-/// Shows the parsed receipt items for the user to review, select, and
-/// optionally assign to group members.  Returns a [ParsedReceipt] with
-/// [selectedItems] populated when the user confirms.
+/// Redesigned receipt review: clean card list, slide-up member assignment.
 class ReceiptReviewScreen extends StatefulWidget {
+  final List<ReceiptItem> items;
+  final List<GroupMember> members;
+  final double? detectedTotal;
+
   const ReceiptReviewScreen({
     super.key,
-    required this.parsed,
+    required this.items,
     required this.members,
+    this.detectedTotal,
   });
-
-  final ParsedReceipt parsed;
-  final List<GroupMember> members;
 
   @override
   State<ReceiptReviewScreen> createState() => _ReceiptReviewScreenState();
@@ -24,245 +25,343 @@ class ReceiptReviewScreen extends StatefulWidget {
 
 class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
   late List<ReceiptItem> _items;
-  late double? _manualTotal;
+  late List<bool> _included;
 
   @override
   void initState() {
     super.initState();
-    // All items start selected
-    _items = widget.parsed.items
-        .map((item) => item.copyWith(isSelected: true))
-        .toList();
-    _manualTotal = widget.parsed.total;
+    _items = List.from(widget.items);
+    _included = List.filled(widget.items.length, true);
   }
 
-  double get _selectedTotal =>
-      _items.where((i) => i.isSelected).fold(0.0, (acc, i) => acc + i.price);
+  double get _selectedTotal => [
+        for (var i = 0; i < _items.length; i++)
+          if (_included[i]) _items[i].price
+      ].fold(0.0, (a, b) => a + b);
 
-  void _toggleItem(int index, bool? selected) {
+  int get _selectedCount => _included.where((v) => v).length;
+
+  void _toggleMember(int idx, String userId) {
     setState(() {
-      _items[index] = _items[index].copyWith(isSelected: selected ?? false);
+      final current = List<String>.from(_items[idx].assignedTo);
+      current.contains(userId)
+          ? current.remove(userId)
+          : current.add(userId);
+      _items[idx] = _items[idx].copyWith(assignedTo: current);
     });
   }
 
-  void _assignMember(int index, String userId, bool add) {
-    final item    = _items[index];
-    final current = List<String>.from(item.assignedTo);
-    if (add) {
-      if (!current.contains(userId)) current.add(userId);
-    } else {
-      current.remove(userId);
-    }
-    setState(() {
-      _items[index] = item.copyWith(assignedTo: current);
-    });
+  void _showAssignSheet(int idx) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _items[idx].name,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w700, fontSize: 17),
+              ),
+              Text(
+                CurrencyUtils.format(_items[idx].price),
+                style: const TextStyle(
+                    color: AppTheme.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15),
+              ),
+              const SizedBox(height: 16),
+              const Text('Assign to:',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w600, fontSize: 13)),
+              const SizedBox(height: 12),
+              ...widget.members.map((m) {
+                final assigned =
+                    _items[idx].assignedTo.contains(m.user.id);
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: UserAvatar(user: m.user, radius: 20),
+                  title: Text(m.user.displayName,
+                      style: const TextStyle(fontWeight: FontWeight.w500)),
+                  trailing: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: 26,
+                    height: 26,
+                    decoration: BoxDecoration(
+                      gradient: assigned
+                          ? AppTheme.primaryGradient
+                          : null,
+                      border: assigned
+                          ? null
+                          : Border.all(color: Colors.grey.shade400),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: assigned
+                        ? const Icon(Icons.check_rounded,
+                            color: Colors.white, size: 16)
+                        : null,
+                  ),
+                  onTap: () {
+                    _toggleMember(idx, m.user.id);
+                    setSheet(() {});
+                  },
+                );
+              }),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: FilledButton.styleFrom(
+                      backgroundColor: AppTheme.primary),
+                  child: const Text('Done'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _confirm() {
-    final selected = _items.where((i) => i.isSelected).toList();
-    final result = widget.parsed.copyWith(
-      selectedItems: selected,
-      total: _manualTotal ?? _selectedTotal,
-    );
-    Navigator.of(context).pop(result);
+    final result = [
+      for (var i = 0; i < _items.length; i++)
+        if (_included[i]) _items[i]
+    ];
+    Navigator.pop(context, result);
   }
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Review Receipt'),
-        actions: [
-          TextButton(
-            onPressed: _confirm,
-            child: const Text('Use'),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Receipt')),
       body: Column(
         children: [
-          // Merchant header
-          if (widget.parsed.merchant != null)
-            Container(
-              width: double.infinity,
-              color: cs.primaryContainer,
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: Row(
-                children: [
-                  const Icon(Icons.storefront_outlined, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      widget.parsed.merchant!,
-                      style: tt.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: cs.onPrimaryContainer,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // Items list
-          Expanded(
-            child: _items.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.search_off_rounded,
-                            size: 48,
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.5)),
-                        const SizedBox(height: 12),
-                        Text(
-                          'No items detected.\nTry a clearer photo.',
-                          textAlign: TextAlign.center,
-                          style: tt.bodyMedium
-                              ?.copyWith(color: cs.onSurfaceVariant),
-                        ),
-                      ],
-                    ),
-                  )
-                : ListView.separated(
-                    itemCount: _items.length,
-                    separatorBuilder: (_, __) =>
-                        const Divider(height: 1, indent: 16),
-                    itemBuilder: (context, index) =>
-                        _ItemRow(
-                          item:     _items[index],
-                          members:  widget.members,
-                          onToggle: (val) => _toggleItem(index, val),
-                          onAssign: (uid, add) =>
-                              _assignMember(index, uid, add),
-                        ),
-                  ),
-          ),
-
-          // Total footer
+          // ── Summary banner ────────────────────────────────────
           Container(
+            margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              color: cs.surface,
-              border: Border(top: BorderSide(color: cs.outlineVariant)),
+              gradient: AppTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.primary.withOpacity(0.3),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            padding: const EdgeInsets.all(20),
             child: Row(
               children: [
+                const Icon(Icons.receipt_long_rounded,
+                    color: Colors.white70, size: 22),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Selected items total',
-                          style: tt.bodySmall
-                              ?.copyWith(color: cs.onSurfaceVariant)),
-                      Text(
-                        CurrencyUtils.formatCompact(_selectedTotal, 'EUR'),
-                        style: tt.titleLarge
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      if (widget.parsed.total != null &&
-                          (_selectedTotal - widget.parsed.total!).abs() > 0.01)
-                        Text(
-                          'Receipt total: ${CurrencyUtils.formatCompact(widget.parsed.total!, 'EUR')}',
-                          style: tt.bodySmall
-                              ?.copyWith(color: cs.onSurfaceVariant),
-                        ),
-                    ],
+                  child: Text(
+                    '$_selectedCount item${_selectedCount == 1 ? '' : 's'} selected',
+                    style: const TextStyle(
+                        color: Colors.white70, fontSize: 14),
                   ),
                 ),
-                FilledButton.icon(
-                  onPressed: _items.any((i) => i.isSelected) ? _confirm : null,
-                  icon: const Icon(Icons.check_rounded),
-                  label: const Text('Use These Items'),
+                Text(
+                  CurrencyUtils.format(_selectedTotal),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 20,
+                  ),
                 ),
               ],
             ),
           ),
+          const SizedBox(height: 8),
+
+          // ── Hint ─────────────────────────────────────────────
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            child: Row(
+              children: [
+                Icon(Icons.touch_app_rounded,
+                    size: 14,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.4)),
+                const SizedBox(width: 6),
+                Text(
+                  'Tap an item to assign it to members',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.4),
+                      ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── Items list ────────────────────────────────────────
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+              itemCount: _items.length,
+              itemBuilder: (context, i) {
+                final item = _items[i];
+                final included = _included[i];
+                final assignedNames = item.assignedTo
+                    .map((id) => widget.members
+                        .firstWhere((m) => m.user.id == id,
+                            orElse: () => throw '')
+                        .user
+                        .displayName)
+                    .join(', ');
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Material(
+                    color: isDark ? AppTheme.cardDark : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: included ? () => _showAssignSheet(i) : null,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
+                        child: Row(
+                          children: [
+                            // Checkbox
+                            GestureDetector(
+                              onTap: () =>
+                                  setState(() => _included[i] = !included),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 180),
+                                width: 26,
+                                height: 26,
+                                decoration: BoxDecoration(
+                                  gradient: included
+                                      ? AppTheme.primaryGradient
+                                      : null,
+                                  border: included
+                                      ? null
+                                      : Border.all(
+                                          color: Colors.grey.shade400,
+                                          width: 1.5),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: included
+                                    ? const Icon(Icons.check_rounded,
+                                        color: Colors.white, size: 16)
+                                    : null,
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            // Name + assignees
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.name,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 15,
+                                      decoration: included
+                                          ? null
+                                          : TextDecoration.lineThrough,
+                                      color: included
+                                          ? null
+                                          : Theme.of(context)
+                                              .colorScheme
+                                              .onSurface
+                                              .withOpacity(0.4),
+                                    ),
+                                  ),
+                                  if (included &&
+                                      assignedNames.isNotEmpty) ...[
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      assignedNames,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.primary
+                                            .withOpacity(0.8),
+                                      ),
+                                    ),
+                                  ] else if (included &&
+                                      widget.members.isNotEmpty) ...[
+                                    const SizedBox(height: 3),
+                                    Text(
+                                      'Tap to assign →',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurface
+                                            .withOpacity(0.35),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            // Price
+                            Text(
+                              CurrencyUtils.format(item.price),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                                color: included
+                                    ? AppTheme.primary
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.3),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
         ],
       ),
-    );
-  }
-}
-
-class _ItemRow extends StatelessWidget {
-  const _ItemRow({
-    required this.item,
-    required this.members,
-    required this.onToggle,
-    required this.onAssign,
-  });
-
-  final ReceiptItem item;
-  final List<GroupMember> members;
-  final ValueChanged<bool?> onToggle;
-  final void Function(String userId, bool add) onAssign;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final tt = Theme.of(context).textTheme;
-
-    return AnimatedOpacity(
-      duration: const Duration(milliseconds: 200),
-      opacity: item.isSelected ? 1.0 : 0.45,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Column(
-          children: [
-            CheckboxListTile(
-              value:    item.isSelected,
-              onChanged: onToggle,
-              title: Text(
-                item.name,
-                style: tt.bodyMedium?.copyWith(
-                  decoration: item.isSelected ? null : TextDecoration.lineThrough,
-                ),
-              ),
-              secondary: Text(
-                CurrencyUtils.formatCompact(item.price, 'EUR'),
-                style: tt.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: item.isSelected ? cs.primary : cs.onSurfaceVariant,
-                ),
-              ),
-              controlAffinity: ListTileControlAffinity.leading,
-              dense: true,
-            ),
-
-            // Member assignment chips (only shown if item is selected)
-            if (item.isSelected && members.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(left: 48, right: 16, bottom: 6),
-                child: Wrap(
-                  spacing: 6,
-                  children: [
-                    Text(
-                      'For:',
-                      style: tt.labelSmall
-                          ?.copyWith(color: cs.onSurfaceVariant),
-                    ),
-                    ...members.map((m) {
-                      final assigned = item.assignedTo.contains(m.user.id);
-                      return FilterChip(
-                        label: Text(
-                          m.user.displayName ??
-                              m.user.email.split('@').first,
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                        selected:  assigned,
-                        onSelected: (val) => onAssign(m.user.id, val),
-                        visualDensity: VisualDensity.compact,
-                        padding: EdgeInsets.zero,
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      );
-                    }),
-                  ],
-                ),
-              ),
-          ],
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: GradientButton(
+            label:
+                'Use $_selectedCount Items  ·  ${CurrencyUtils.format(_selectedTotal)}',
+            icon: Icons.check_rounded,
+            onPressed: _selectedCount > 0 ? _confirm : null,
+          ),
         ),
       ),
     );

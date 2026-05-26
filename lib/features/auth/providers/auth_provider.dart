@@ -1,117 +1,66 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../shared/repositories/supabase_client.dart';
 import '../models/app_user.dart';
+import '../../../shared/repositories/supabase_client.dart';
 
-// ─────────────────────────────────────────
-// Auth state stream — tracks Supabase session
-// ─────────────────────────────────────────
-
-/// Emits the current [User] (or null) whenever auth state changes.
-final authStateProvider = StreamProvider<User?>((ref) {
-  final client = ref.watch(supabaseClientProvider);
-  return client.auth.onAuthStateChange.map((event) => event.session?.user);
-});
-
-/// Convenience: the current user's ID (or null).
-final currentUserIdProvider = Provider<String?>((ref) {
-  return ref.watch(authStateProvider).valueOrNull?.id;
-});
-
-// ─────────────────────────────────────────
-// ChangeNotifier that GoRouter can listen to
-// ─────────────────────────────────────────
-
+// ── Router change notifier (triggers GoRouter redirect on auth change) ──────
 class AuthChangeNotifier extends ChangeNotifier {
   AuthChangeNotifier() {
-    _subscription = Supabase.instance.client.auth.onAuthStateChange
-        .listen((_) => notifyListeners());
-  }
-
-  late final StreamSubscription _subscription;
-
-  bool get isAuthenticated =>
-      Supabase.instance.client.auth.currentUser != null;
-
-  @override
-  void dispose() {
-    _subscription.cancel();
-    super.dispose();
+    supabase.auth.onAuthStateChange.listen((_) => notifyListeners());
   }
 }
 
-final authChangeNotifierProvider = Provider<AuthChangeNotifier>((ref) {
-  final notifier = AuthChangeNotifier();
-  ref.onDispose(notifier.dispose);
-  return notifier;
+final authChangeNotifierProvider = Provider<AuthChangeNotifier>(
+  (ref) => AuthChangeNotifier(),
+);
+
+// ── Current Supabase session ─────────────────────────────────────────────────
+final sessionProvider = StreamProvider<Session?>((ref) {
+  return supabase.auth.onAuthStateChange
+      .map((event) => event.session);
 });
 
-// ─────────────────────────────────────────
-// Auth actions (sign in, sign up, sign out)
-// ─────────────────────────────────────────
+// ── Current logged-in AppUser ────────────────────────────────────────────────
+final currentUserProvider = FutureProvider<AppUser?>((ref) async {
+  final user = supabase.auth.currentUser;
+  if (user == null) return null;
 
-class AuthNotifier extends AsyncNotifier<void> {
-  @override
-  Future<void> build() async {}
-
-  Future<void> signIn({
-    required String email,
-    required String password,
-  }) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      await ref
-          .read(supabaseClientProvider)
-          .auth
-          .signInWithPassword(email: email.trim(), password: password);
-    });
-  }
-
-  Future<void> signUp({
-    required String email,
-    required String password,
-    required String displayName,
-  }) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      await ref.read(supabaseClientProvider).auth.signUp(
-        email: email.trim(),
-        password: password,
-        data: {'display_name': displayName.trim()},
-      );
-    });
-  }
-
-  Future<void> signOut() async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(() async {
-      await ref.read(supabaseClientProvider).auth.signOut();
-    });
-  }
-}
-
-final authNotifierProvider =
-    AsyncNotifierProvider<AuthNotifier, void>(AuthNotifier.new);
-
-// ─────────────────────────────────────────
-// Current user profile
-// ─────────────────────────────────────────
-
-final currentUserProfileProvider = FutureProvider<AppUser?>((ref) async {
-  final userId = ref.watch(currentUserIdProvider);
-  if (userId == null) return null;
-
-  final data = await ref
-      .read(supabaseClientProvider)
+  final data = await supabase
       .from('profiles')
       .select()
-      .eq('id', userId)
+      .eq('id', user.id)
       .maybeSingle();
 
   if (data == null) return null;
   return AppUser.fromJson(data);
 });
+
+// ── Auth notifier (sign in / sign up / sign out) ─────────────────────────────
+class AuthNotifier extends StateNotifier<AsyncValue<void>> {
+  AuthNotifier() : super(const AsyncData(null));
+
+  Future<void> signIn({required String email, required String password}) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await supabase.auth.signInWithPassword(email: email, password: password);
+    });
+  }
+
+  Future<void> signUp({required String email, required String password}) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      await supabase.auth.signUp(email: email, password: password);
+    });
+  }
+
+  Future<void> signOut() async {
+    await supabase.auth.signOut();
+  }
+}
+
+final authNotifierProvider =
+    StateNotifierProvider<AuthNotifier, AsyncValue<void>>(
+  (ref) => AuthNotifier(),
+);

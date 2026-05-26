@@ -1,121 +1,182 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 
 import '../providers/groups_provider.dart';
-import '../models/group.dart';
-import '../../auth/providers/auth_provider.dart';
-import '../../../shared/widgets/loading_overlay.dart';
+import '../../../features/auth/providers/auth_provider.dart';
+import '../../../core/theme.dart';
 
 class GroupsListScreen extends ConsumerWidget {
   const GroupsListScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final groupsAsync = ref.watch(groupsNotifierProvider);
+    final groupsAsync = ref.watch(groupsProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Groups'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            tooltip: 'Sign out',
-            onPressed: () async {
-              await ref.read(authNotifierProvider.notifier).signOut();
+      body: CustomScrollView(
+        slivers: [
+          // ── Header ──────────────────────────────────────────────
+          SliverAppBar(
+            expandedHeight: 120,
+            pinned: true,
+            flexibleSpace: FlexibleSpaceBar(
+              title: const Text('SplitWise'),
+              background: Container(
+                decoration: const BoxDecoration(
+                  gradient: AppTheme.primaryGradient,
+                ),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'My Groups',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 28,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.logout_rounded,
+                              color: Colors.white70),
+                          onPressed: () =>
+                              ref.read(authNotifierProvider.notifier).signOut(),
+                          tooltip: 'Sign out',
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // ── Body ────────────────────────────────────────────────
+          groupsAsync.when(
+            loading: () => const SliverFillRemaining(
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => SliverFillRemaining(
+              child: Center(child: Text('Error: $e')),
+            ),
+            data: (groups) {
+              if (groups.isEmpty) {
+                return SliverFillRemaining(
+                  child: _EmptyState(),
+                );
+              }
+              return SliverPadding(
+                padding: const EdgeInsets.fromLTRB(0, 8, 0, 100),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, i) => _GroupCard(group: groups[i]),
+                    childCount: groups.length,
+                  ),
+                ),
+              );
             },
           ),
         ],
       ),
-      body: groupsAsync.when(
-        loading: () => const InlineLoader(message: 'Loading groups…'),
-        error: (e, _) => ErrorView(
-          message: e.toString(),
-          onRetry: () =>
-              ref.read(groupsNotifierProvider.notifier).refresh(),
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          gradient: AppTheme.primaryGradient,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primary.withOpacity(0.4),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
         ),
-        data: (groups) => groups.isEmpty
-            ? _EmptyGroupsView(
-                onCreateTap: () => context.push('/groups/create'),
-              )
-            : RefreshIndicator(
-                onRefresh: () =>
-                    ref.read(groupsNotifierProvider.notifier).refresh(),
-                child: ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: groups.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) =>
-                      _GroupCard(group: groups[index]),
-                ),
-              ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/groups/create'),
-        icon: const Icon(Icons.group_add_rounded),
-        label: const Text('New Group'),
+        child: FloatingActionButton.extended(
+          onPressed: () => context.push('/groups/create'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          icon: const Icon(Icons.add_rounded, color: Colors.white),
+          label: const Text('New Group',
+              style: TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.w600)),
+        ),
       ),
     );
   }
 }
 
-class _GroupCard extends StatelessWidget {
+class _GroupCard extends ConsumerWidget {
+  final dynamic group;
   const _GroupCard({required this.group});
 
-  final ExpenseGroup group;
-
   @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final formatted = DateFormat('MMM d, y').format(group.createdAt.toLocal());
-
-    return Card(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => context.push('/groups/${group.id}'),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Row(
-            children: [
-              // Emoji avatar
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: cs.primaryContainer,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Text(
-                    group.emoji,
-                    style: const TextStyle(fontSize: 24),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      child: Material(
+        color: isDark ? AppTheme.cardDark : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => context.push('/groups/${group.id}'),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                // Emoji icon with gradient bg
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Center(
+                    child: Text(group.emoji,
+                        style: const TextStyle(fontSize: 26)),
                   ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      group.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Created $formatted',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: cs.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        group.name,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w700),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        'Tap to view expenses',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .onSurface
+                                    .withOpacity(0.5)),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Icon(Icons.chevron_right_rounded, color: cs.onSurfaceVariant),
-            ],
+                Icon(Icons.chevron_right_rounded,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.3)),
+              ],
+            ),
           ),
         ),
       ),
@@ -123,40 +184,44 @@ class _GroupCard extends StatelessWidget {
   }
 }
 
-class _EmptyGroupsView extends StatelessWidget {
-  const _EmptyGroupsView({required this.onCreateTap});
-
-  final VoidCallback onCreateTap;
-
+class _EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(40),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.group_outlined, size: 72, color: cs.primary.withValues(alpha: 0.4)),
-            const SizedBox(height: 20),
+            Container(
+              width: 100,
+              height: 100,
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: const Center(
+                child: Text('💸', style: TextStyle(fontSize: 48)),
+              ),
+            ),
+            const SizedBox(height: 24),
             Text(
               'No groups yet',
-              style: Theme.of(context).textTheme.headlineSmall,
+              style: Theme.of(context)
+                  .textTheme
+                  .headlineSmall
+                  ?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             Text(
-              'Create a group to start splitting expenses with friends.',
+              'Create a group to start splitting\nexpenses with friends',
               textAlign: TextAlign.center,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodyMedium
-                  ?.copyWith(color: cs.onSurfaceVariant),
-            ),
-            const SizedBox(height: 28),
-            FilledButton.icon(
-              onPressed: onCreateTap,
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Create a Group'),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.5),
+                  ),
             ),
           ],
         ),

@@ -1,36 +1,38 @@
 import 'dart:io';
 
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:image_picker/image_picker.dart';
 
-/// Wraps ML Kit on-device text recognition.
-/// Processes an image file and returns the raw recognized text.
+import 'receipt_parser.dart';
+
 class ReceiptScanner {
-  ReceiptScanner._();
+  final _picker = ImagePicker();
+  final _recognizer = TextRecognizer(script: TextRecognitionScript.latin);
 
-  /// Scans [imageFile] and returns the full concatenated text.
-  /// Throws if recognition fails.
-  static Future<String> scanImage(File imageFile) async {
+  /// Opens camera (or gallery), runs OCR, returns parsed receipt.
+  Future<ParsedReceipt?> scanFromCamera() async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 90,
+    );
+    if (picked == null) return null;
+    return _process(File(picked.path));
+  }
+
+  Future<ParsedReceipt?> scanFromGallery() async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 90,
+    );
+    if (picked == null) return null;
+    return _process(File(picked.path));
+  }
+
+  Future<ParsedReceipt> _process(File imageFile) async {
     final inputImage = InputImage.fromFile(imageFile);
-    final recognizer = TextRecognizer(script: TextRecognitionScript.latin);
-
-    try {
-      final recognizedText = await recognizer.processImage(inputImage);
-      return recognizedText.text;
-    } finally {
-      await recognizer.close();
-    }
+    final recognized = await _recognizer.processImage(inputImage);
+    return ReceiptParser.parse(recognized.text);
   }
 
-  /// Scans and returns individual text blocks with bounding-box metadata.
-  /// Useful for more sophisticated layout parsing.
-  static Future<RecognizedText> scanImageDetailed(File imageFile) async {
-    final inputImage  = InputImage.fromFile(imageFile);
-    final recognizer  = TextRecognizer(script: TextRecognitionScript.latin);
-
-    try {
-      return await recognizer.processImage(inputImage);
-    } finally {
-      await recognizer.close();
-    }
-  }
+  void dispose() => _recognizer.close();
 }

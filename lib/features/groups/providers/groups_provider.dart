@@ -1,96 +1,63 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../shared/repositories/groups_repository.dart';
 import '../models/group.dart';
 import '../models/group_member.dart';
+import '../../../shared/repositories/groups_repository.dart';
 
-// ─────────────────────────────────────────
-// Groups list
-// ─────────────────────────────────────────
+final groupsRepositoryProvider = Provider<GroupsRepository>(
+  (ref) => GroupsRepository(),
+);
+
+// ── All groups for the current user ──────────────────────────────────────────
+final groupsProvider =
+    AsyncNotifierProvider<GroupsNotifier, List<ExpenseGroup>>(
+  GroupsNotifier.new,
+);
 
 class GroupsNotifier extends AsyncNotifier<List<ExpenseGroup>> {
   @override
   Future<List<ExpenseGroup>> build() async {
-    return ref.read(groupsRepositoryProvider).fetchMyGroups();
+    return ref.read(groupsRepositoryProvider).getGroups();
   }
 
   Future<ExpenseGroup> createGroup({
     required String name,
     required String emoji,
-    required String createdBy,
   }) async {
-    final group = await ref.read(groupsRepositoryProvider).createGroup(
-          name:      name,
-          emoji:     emoji,
-          createdBy: createdBy,
-        );
-    // Prepend to list
-    state = AsyncData([group, ...?state.valueOrNull]);
+    final repo = ref.read(groupsRepositoryProvider);
+    final group = await repo.createGroup(name: name, emoji: emoji);
+    state = AsyncData([group, ...state.value ?? []]);
     return group;
   }
 
   Future<void> refresh() async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(
-      () => ref.read(groupsRepositoryProvider).fetchMyGroups(),
-    );
+        () => ref.read(groupsRepositoryProvider).getGroups());
   }
 }
 
-final groupsNotifierProvider =
-    AsyncNotifierProvider<GroupsNotifier, List<ExpenseGroup>>(
-  GroupsNotifier.new,
+// ── Members of a specific group ───────────────────────────────────────────────
+final groupMembersProvider = AsyncNotifierProviderFamily<
+    GroupMembersNotifier, List<GroupMember>, String>(
+  GroupMembersNotifier.new,
 );
-
-// ─────────────────────────────────────────
-// Single group
-// ─────────────────────────────────────────
-
-final groupProvider =
-    FutureProvider.family<ExpenseGroup, String>((ref, groupId) async {
-  return ref.read(groupsRepositoryProvider).fetchGroup(groupId);
-});
-
-// ─────────────────────────────────────────
-// Group members
-// ─────────────────────────────────────────
 
 class GroupMembersNotifier
     extends FamilyAsyncNotifier<List<GroupMember>, String> {
   @override
   Future<List<GroupMember>> build(String groupId) async {
-    return ref.read(groupsRepositoryProvider).fetchMembers(groupId);
+    return ref.read(groupsRepositoryProvider).getGroupMembers(groupId);
   }
 
-  Future<GroupMember?> inviteByEmail(String email) async {
-    final member = await ref
-        .read(groupsRepositoryProvider)
-        .inviteMemberByEmail(groupId: arg, email: email);
-
-    if (member != null) {
-      state = AsyncData([...?state.valueOrNull, member]);
-    }
-    return member;
-  }
-
-  Future<void> removeMember(String userId) async {
-    await ref
-        .read(groupsRepositoryProvider)
-        .removeMember(groupId: arg, userId: userId);
-    state = AsyncData(
-      (state.valueOrNull ?? []).where((m) => m.user.id != userId).toList(),
-    );
+  Future<void> addMemberByEmail(String email) async {
+    final repo = ref.read(groupsRepositoryProvider);
+    await repo.addMemberByEmail(groupId: arg, email: email);
+    state = AsyncData(await repo.getGroupMembers(arg));
   }
 
   Future<void> refresh() async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(
-      () => ref.read(groupsRepositoryProvider).fetchMembers(arg),
-    );
+    state = AsyncData(
+        await ref.read(groupsRepositoryProvider).getGroupMembers(arg));
   }
 }
-
-final groupMembersProvider = AsyncNotifierProviderFamily<
-    GroupMembersNotifier, List<GroupMember>, String>(
-  GroupMembersNotifier.new,
-);

@@ -1,7 +1,6 @@
 name: splitwise_app
-description: An expense-splitting app with OCR receipt scanning and voice entry.
-publish_to: "none"
-
+description: Expense splitting app with OCR and voice input.
+publish_to: none
 version: 1.0.0+1
 
 environment:
@@ -11,49 +10,39 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # ── Backend ──────────────────────────────
+  # Supabase
   supabase_flutter: ^2.5.0
 
-  # ── State management ─────────────────────
+  # State management
   flutter_riverpod: ^2.5.1
   riverpod_annotation: ^2.3.5
 
-  # ── Navigation ───────────────────────────
+  # Navigation
   go_router: ^14.2.0
 
-  # ── OCR ──────────────────────────────────
+  # OCR
   google_mlkit_text_recognition: ^0.13.0
 
-  # ── Voice ────────────────────────────────
+  # Camera / Image
+  image_picker: ^1.1.2
+  camera: ^0.11.0+2
+
+  # Voice / Speech
   speech_to_text: ^6.6.2
 
-  # ── Camera / image ───────────────────────
-  image_picker: ^1.1.2
+  # UI helpers
   cached_network_image: ^3.3.1
-
-  # ── Utilities ────────────────────────────
   intl: ^0.19.0
-  uuid: ^4.4.0
 
-  # ── Icons (optional, nice to have) ───────
-  cupertino_icons: ^1.0.8
+  # Utilities
+  uuid: ^4.4.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
-  # Code generation for Riverpod
   build_runner: ^2.4.11
   riverpod_generator: ^2.4.3
-
   flutter_lints: ^4.0.0
 
 flutter:
   uses-material-design: true
-  # Uncomment to add custom fonts:
-  # fonts:
-  #   - family: Inter
-  #     fonts:
-  #       - asset: assets/fonts/Inter-Regular.ttf
-  #       - asset: assets/fonts/Inter-Bold.ttf
-  #         weight: 700

@@ -1,302 +1,298 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
-import '../../auth/providers/auth_provider.dart';
-import '../../groups/models/group_member.dart';
+import '../providers/expenses_provider.dart';
+import '../models/expense_participant.dart';
+import '../models/receipt_item.dart';
 import '../../groups/providers/groups_provider.dart';
+import '../../groups/models/group_member.dart';
 import '../../ocr/receipt_scanner.dart';
-import '../../ocr/receipt_parser.dart';
 import '../../ocr/screens/receipt_review_screen.dart';
 import '../../voice/voice_recorder.dart';
 import '../../voice/expense_nlp_parser.dart';
-import '../models/receipt_item.dart';
-import '../providers/expenses_provider.dart';
-import '../../../core/constants.dart';
-import '../../../core/utils/currency_utils.dart';
-import '../../../shared/widgets/amount_input.dart';
+import '../../../shared/repositories/supabase_client.dart';
+import '../../../shared/repositories/expenses_repository.dart';
 import '../../../shared/widgets/loading_overlay.dart';
 import '../../../shared/widgets/user_avatar.dart';
+import '../../../shared/widgets/amount_input.dart';
+import '../../../core/utils/currency_utils.dart';
+import '../../../core/constants.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
-  const AddExpenseScreen({super.key, required this.groupId});
-
   final String groupId;
+  const AddExpenseScreen({super.key, required this.groupId});
 
   @override
   ConsumerState<AddExpenseScreen> createState() => _AddExpenseScreenState();
 }
 
 class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
-  final _formKey      = GlobalKey<FormState>();
-  final _descCtrl     = TextEditingController();
-  final _amountCtrl   = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final _descCtrl = TextEditingController();
+  final _amountCtrl = TextEditingController();
 
-  String   _currency    = AppConstants.defaultCurrency;
-  String   _splitType   = AppConstants.splitEqual;
-  bool     _isLoading   = false;
-  File?    _receiptImage;
+  String _currency = AppConstants.defaultCurrency;
+  String? _paidByUserId;
+  String _splitType = 'equal';
+  final Set<String> _participantIds = {};
+  List<ReceiptItem> _receiptItems = [];
 
-  // Whom paid & who splits
-  String?               _paidByUserId;
-  Set<String>           _selectedParticipantIds = {};
-  List<GroupMember>     _members = [];
+  bool _isLoading = false;
 
-  // OCR-sourced items (shown as optional checklist)
-  List<ReceiptItem>     _receiptItems = [];
+  // OCR
+  final _scanner = ReceiptScanner();
 
-  // Voice recorder state
-  bool   _isRecording   = false;
-  String _voiceStatus   = '';
-
-  late final VoiceRecorder _voiceRecorder;
+  // Voice
+  final _voice = VoiceRecorder();
+  bool _isListening = false;
+  String _voiceTranscript = '';
 
   @override
   void initState() {
     super.initState();
-    _voiceRecorder = VoiceRecorder();
-    _initMembers();
-  }
-
-  Future<void> _initMembers() async {
-    final membersAsync = ref.read(groupMembersProvider(widget.groupId));
-    final members = membersAsync.valueOrNull ?? [];
-    final currentUserId = ref.read(currentUserIdProvider);
-
-    setState(() {
-      _members = members;
-      _paidByUserId = currentUserId;
-      _selectedParticipantIds = members.map((m) => m.user.id).toSet();
-    });
+    _voice.initialize();
+    // Default payer = current user
+    _paidByUserId = supabase.auth.currentUser?.id;
   }
 
   @override
   void dispose() {
     _descCtrl.dispose();
     _amountCtrl.dispose();
-    _voiceRecorder.dispose();
+    _scanner.dispose();
+    _voice.dispose();
     super.dispose();
   }
 
-  // ─────────────────────────────────────────
-  // OCR Flow
-  // ─────────────────────────────────────────
-
-  Future<void> _launchOcrFlow() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 85,
-    );
-    if (pickedFile == null || !mounted) return;
-
+  // ── OCR flow ─────────────────────────────────────────────────────────────
+  Future<void> _scanReceipt({bool fromGallery = false}) async {
     setState(() => _isLoading = true);
-
     try {
-      final imageFile = File(pickedFile.path);
-      final rawText   = await ReceiptScanner.scanImage(imageFile);
-      final parsed    = ReceiptParser.parse(rawText);
+      final parsed = fromGallery
+          ? await _scanner.scanFromGallery()
+          : await _scanner.scanFromCamera();
+      if (parsed == null || !mounted) return;
 
-      if (!mounted) return;
-      setState(() => _isLoading = false);
+      if (parsed.items.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Could not detect any items. Try a clearer photo.')),
+        );
+        return;
+      }
 
-      // Navigate to review screen
-      final approved = await Navigator.of(context).push<ParsedReceipt>(
+      final members = ref.read(groupMembersProvider(widget.groupId)).value ?? [];
+      final result = await Navigator.push<List<ReceiptItem>>(
+        context,
         MaterialPageRoute(
           builder: (_) => ReceiptReviewScreen(
-            parsed:  parsed,
-            members: _members,
+            items: parsed.items,
+            members: members,
+            detectedTotal: parsed.total,
           ),
         ),
       );
 
-      if (approved == null || !mounted) return;
-
-      // Pre-fill form
-      setState(() {
-        _receiptImage = imageFile;
-        if (approved.total != null && _amountCtrl.text.isEmpty) {
-          _amountCtrl.text =
-              approved.total!.toStringAsFixed(2).replaceAll('.', ',');
-        }
-        if (approved.merchant != null && _descCtrl.text.isEmpty) {
-          _descCtrl.text = approved.merchant!;
-        }
-        _receiptItems = approved.selectedItems;
-        _splitType    = AppConstants.splitByItem;
-      });
+      if (result != null && result.isNotEmpty) {
+        final total =
+            result.fold(0.0, (sum, item) => sum + item.price);
+        setState(() {
+          _receiptItems = result;
+          _amountCtrl.text = total.toStringAsFixed(2);
+          _splitType = 'by_item';
+          if (parsed.merchant != null && _descCtrl.text.isEmpty) {
+            _descCtrl.text = parsed.merchant!;
+          }
+        });
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('OCR failed: $e')),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('OCR error: $e')));
       }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  // ─────────────────────────────────────────
-  // Voice Flow
-  // ─────────────────────────────────────────
-
-  Future<void> _toggleVoiceRecording() async {
-    if (_isRecording) {
-      setState(() {
-        _isRecording = false;
-        _voiceStatus = 'Processing…';
-      });
-      final transcript = await _voiceRecorder.stopListening();
-      if (transcript.isEmpty) {
-        setState(() => _voiceStatus = 'Nothing heard. Try again.');
-        return;
-      }
-
-      final parsed = ExpenseNlpParser.parse(
-        transcript: transcript,
-        members: _members,
-      );
-
-      setState(() {
-        _voiceStatus = 'Understood: "$transcript"';
-        if (parsed.amount != null) {
-          _amountCtrl.text =
-              parsed.amount!.toStringAsFixed(2).replaceAll('.', ',');
-        }
-        if (parsed.description != null && _descCtrl.text.isEmpty) {
-          _descCtrl.text = parsed.description!;
-        }
-        if (parsed.payerUserId != null) {
-          _paidByUserId = parsed.payerUserId;
-        }
-        if (parsed.participantUserIds.isNotEmpty) {
-          _selectedParticipantIds = Set.from(parsed.participantUserIds);
-        }
-      });
+  // ── Voice flow ────────────────────────────────────────────────────────────
+  Future<void> _toggleVoice() async {
+    if (_isListening) {
+      await _voice.stopListening();
+      setState(() => _isListening = false);
+      _applyVoiceResult(_voiceTranscript);
     } else {
-      final available = await _voiceRecorder.initialize();
-      if (!available) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Microphone not available')),
-        );
+      final ok = await _voice.initialize();
+      if (!ok) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Speech recognition not available')),
+          );
+        }
         return;
       }
       setState(() {
-        _isRecording = true;
-        _voiceStatus = 'Listening…';
+        _isListening = true;
+        _voiceTranscript = '';
       });
-      await _voiceRecorder.startListening();
+      await _voice.startListening(
+        onResult: (text) => setState(() => _voiceTranscript = text),
+      );
     }
   }
 
-  // ─────────────────────────────────────────
-  // Submit
-  // ─────────────────────────────────────────
+  void _applyVoiceResult(String transcript) {
+    if (transcript.isEmpty) return;
+    final parsed = ExpenseNlpParser.parse(transcript);
 
-  Future<void> _submit() async {
+    if (parsed.amount != null) {
+      _amountCtrl.text = parsed.amount!.toStringAsFixed(2);
+    }
+    if (parsed.description != null && _descCtrl.text.isEmpty) {
+      _descCtrl.text = parsed.description!;
+    }
+
+    // Payer resolution
+    if (parsed.payerName == 'me') {
+      setState(() => _paidByUserId = supabase.auth.currentUser?.id);
+    } else if (parsed.payerName != null) {
+      final members =
+          ref.read(groupMembersProvider(widget.groupId)).value ?? [];
+      final match = members.where((m) =>
+          m.user.displayName
+              .toLowerCase()
+              .contains(parsed.payerName!.toLowerCase()));
+      if (match.isNotEmpty) {
+        setState(() => _paidByUserId = match.first.user.id);
+      }
+    }
+
+    // Participants from split names
+    if (parsed.splitWithNames.isNotEmpty) {
+      final members =
+          ref.read(groupMembersProvider(widget.groupId)).value ?? [];
+      for (final name in parsed.splitWithNames) {
+        for (final m in members) {
+          if (m.user.displayName.toLowerCase().contains(name.toLowerCase())) {
+            _participantIds.add(m.user.id);
+          }
+        }
+      }
+      setState(() {});
+    }
+
+    if (mounted && parsed.hasData) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Got it! "${transcript.substring(0, transcript.length.clamp(0, 60))}…"'),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  // ── Submit ────────────────────────────────────────────────────────────────
+  Future<void> _submit(List<GroupMember> members) async {
     if (!_formKey.currentState!.validate()) return;
     if (_paidByUserId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select who paid')),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Select who paid')));
       return;
     }
-    if (_selectedParticipantIds.isEmpty) {
+    if (_participantIds.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select at least one participant')),
-      );
+          const SnackBar(content: Text('Select at least one participant')));
       return;
     }
 
-    FocusScope.of(context).unfocus();
     setState(() => _isLoading = true);
-
     try {
-      final rawAmount = _amountCtrl.text.replaceAll(',', '.');
-      final amount    = double.parse(rawAmount);
-      final createdBy = ref.read(currentUserIdProvider)!;
+      final repo = ref.read(expensesRepositoryProvider);
+      final amount = double.parse(_amountCtrl.text);
 
-      // Compute share amounts
-      List<({String userId, double shareAmount})> participants;
+      final expense = await repo.createExpense(
+        groupId: widget.groupId,
+        description: _descCtrl.text.trim(),
+        amount: amount,
+        currency: _currency,
+        paidBy: _paidByUserId!,
+        splitType: _splitType,
+      );
 
-      if (_splitType == AppConstants.splitByItem && _receiptItems.isNotEmpty) {
-        // By-item: sum each person's assigned items
-        final totals = <String, double>{};
-        for (final item in _receiptItems.where((i) => i.isSelected)) {
+      // Build participants
+      final List<ExpenseParticipant> participants;
+      if (_splitType == 'equal') {
+        final share =
+            double.parse((amount / _participantIds.length).toStringAsFixed(2));
+        participants = _participantIds
+            .map((id) => ExpenseParticipant(
+                  id: '',
+                  expenseId: expense.id,
+                  userId: id,
+                  shareAmount: share,
+                ))
+            .toList();
+      } else {
+        // by_item: derive shares from receipt items
+        final shareMap = <String, double>{};
+        for (final item in _receiptItems) {
           if (item.assignedTo.isEmpty) {
-            // Distribute equally among selected participants
-            final each = item.price / _selectedParticipantIds.length;
-            for (final id in _selectedParticipantIds) {
-              totals[id] = (totals[id] ?? 0) + each;
+            // split equally among all participants
+            final perPerson = item.price / _participantIds.length;
+            for (final id in _participantIds) {
+              shareMap[id] = (shareMap[id] ?? 0) + perPerson;
             }
           } else {
-            final each = item.price / item.assignedTo.length;
+            final perPerson = item.price / item.assignedTo.length;
             for (final id in item.assignedTo) {
-              totals[id] = (totals[id] ?? 0) + each;
+              shareMap[id] = (shareMap[id] ?? 0) + perPerson;
             }
           }
         }
-        participants = totals.entries
-            .map((e) => (userId: e.key, shareAmount: e.value))
-            .toList();
-      } else {
-        // Equal split
-        final share = amount / _selectedParticipantIds.length;
-        participants = _selectedParticipantIds
-            .map((id) => (
-                  userId:      id,
-                  shareAmount: (share * 100).round() / 100,
+        participants = shareMap.entries
+            .map((e) => ExpenseParticipant(
+                  id: '',
+                  expenseId: expense.id,
+                  userId: e.key,
+                  shareAmount:
+                      double.parse(e.value.toStringAsFixed(2)),
                 ))
             .toList();
       }
 
-      await ref.read(groupExpensesProvider(widget.groupId).notifier).addExpense(
-            description:     _descCtrl.text.trim(),
-            amount:          amount,
-            currency:        _currency,
-            paidByUserId:    _paidByUserId!,
-            createdByUserId: createdBy,
-            splitType:       _splitType,
-            participants:    participants,
-            receiptImage:    _receiptImage,
-            receiptItems:    _receiptItems.where((i) => i.isSelected).toList(),
-          );
+      await repo.addParticipants(expense.id, participants);
 
-      if (mounted) context.pop();
-    } catch (e) {
-      setState(() => _isLoading = false);
+      if (_receiptItems.isNotEmpty) {
+        await repo.addReceiptItems(expense.id, _receiptItems);
+      }
+
+      // Refresh expense list
+      ref.invalidate(groupExpensesProvider(widget.groupId));
+
       if (mounted) {
+        context.pop();
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to save expense: $e'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
+          const SnackBar(content: Text('Expense added!')),
         );
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
-
-  // ─────────────────────────────────────────
-  // Build
-  // ─────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
     final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
-    final cs = Theme.of(context).colorScheme;
-
-    // Sync members when loaded
-    membersAsync.whenData((members) {
-      if (_members.isEmpty && members.isNotEmpty) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => _initMembers());
-      }
-    });
+    final members = membersAsync.value ?? [];
 
     return LoadingOverlay(
       isLoading: _isLoading,
-      message: 'Saving expense…',
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Add Expense'),
@@ -305,245 +301,219 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             IconButton(
               icon: const Icon(Icons.document_scanner_outlined),
               tooltip: 'Scan receipt',
-              onPressed: _launchOcrFlow,
+              onPressed: () => _showScanOptions(),
             ),
             // Voice button
             IconButton(
-              icon: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 200),
-                child: _isRecording
-                    ? const Icon(Icons.stop_circle_outlined, key: ValueKey('stop'))
-                    : const Icon(Icons.mic_outlined, key: ValueKey('mic')),
+              icon: Icon(
+                _isListening ? Icons.mic : Icons.mic_none,
+                color: _isListening ? Colors.red : null,
               ),
-              tooltip: _isRecording ? 'Stop recording' : 'Voice entry',
-              onPressed: _toggleVoiceRecording,
+              tooltip: _isListening ? 'Stop recording' : 'Voice input',
+              onPressed: _toggleVoice,
             ),
           ],
         ),
-        body: Form(
-          key: _formKey,
-          child: ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              // Voice status banner
-              if (_voiceStatus.isNotEmpty)
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: _isRecording
-                        ? cs.errorContainer
-                        : cs.primaryContainer,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _isRecording
-                            ? Icons.graphic_eq_rounded
-                            : Icons.check_circle_outline_rounded,
-                        color: _isRecording
-                            ? cs.onErrorContainer
-                            : cs.onPrimaryContainer,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          _voiceStatus,
-                          style: TextStyle(
-                            color: _isRecording
-                                ? cs.onErrorContainer
-                                : cs.onPrimaryContainer,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+        body: membersAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (e, _) => Center(child: Text('$e')),
+          data: (members) => _buildForm(members),
+        ),
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: ElevatedButton(
+              onPressed: _isLoading ? null : () => _submit(members),
+              child: const Text('Save Expense'),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
-              // Description
-              TextFormField(
-                controller: _descCtrl,
-                textCapitalization: TextCapitalization.sentences,
-                textInputAction: TextInputAction.next,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  hintText: 'e.g. Dinner at Trattoria, Groceries',
-                  prefixIcon: Icon(Icons.edit_outlined),
+  void _showScanOptions() {
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_outlined),
+              title: const Text('Take a photo'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _scanReceipt();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _scanReceipt(fromGallery: true);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForm(List<GroupMember> members) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Voice transcript preview
+            if (_isListening || _voiceTranscript.isNotEmpty) ...[
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _isListening
+                      ? Colors.red.shade50
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) {
-                    return 'Enter a description';
-                  }
-                  return null;
-                },
+                child: Row(
+                  children: [
+                    Icon(
+                      _isListening ? Icons.mic : Icons.mic_none,
+                      color: _isListening ? Colors.red : null,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _isListening
+                            ? (_voiceTranscript.isEmpty
+                                ? 'Listening…'
+                                : _voiceTranscript)
+                            : _voiceTranscript,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
+            ],
 
-              // Amount + currency row
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: AmountInput(
-                      controller: _amountCtrl,
-                      currency: _currency,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: CurrencySelector(
-                      value: _currency,
-                      onChanged: (v) {
-                        if (v != null) setState(() => _currency = v);
-                      },
-                    ),
-                  ),
-                ],
+            // Amount
+            AmountInput(
+                controller: _amountCtrl, currency: _currency),
+            const SizedBox(height: 8),
+
+            // Currency selector
+            DropdownButtonFormField<String>(
+              value: _currency,
+              decoration: const InputDecoration(labelText: 'Currency'),
+              items: CurrencyUtils.supportedCurrencies
+                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                  .toList(),
+              onChanged: (v) => setState(() => _currency = v!),
+            ),
+            const SizedBox(height: 16),
+
+            // Description
+            TextFormField(
+              controller: _descCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Description',
+                prefixIcon: Icon(Icons.description_outlined),
               ),
-              const SizedBox(height: 20),
+              validator: (v) =>
+                  v != null && v.trim().isNotEmpty ? null : 'Enter a description',
+            ),
+            const SizedBox(height: 16),
 
-              // Paid by
-              Text('Paid by', style: Theme.of(context).textTheme.labelLarge),
-              const SizedBox(height: 8),
-              membersAsync.when(
-                loading: () => const CircularProgressIndicator(),
-                error: (_, __) => const Text('Failed to load members'),
-                data: (members) => Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: members.map((m) {
-                    final selected = _paidByUserId == m.user.id;
-                    return ChoiceChip(
-                      avatar: UserAvatar(user: m.user, radius: 12),
-                      label: Text(m.user.name),
-                      selected: selected,
-                      onSelected: (_) =>
-                          setState(() => _paidByUserId = m.user.id),
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 20),
+            // Paid by
+            Text('Paid by',
+                style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: members.map((m) {
+                final selected = _paidByUserId == m.user.id;
+                return ChoiceChip(
+                  avatar: UserAvatar(user: m.user, radius: 12),
+                  label: Text(m.user.displayName),
+                  selected: selected,
+                  onSelected: (_) =>
+                      setState(() => _paidByUserId = m.user.id),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
 
-              // Participants
-              Text('Split with', style: Theme.of(context).textTheme.labelLarge),
-              const SizedBox(height: 8),
-              membersAsync.when(
-                loading: () => const CircularProgressIndicator(),
-                error: (_, __) => const Text('Failed to load members'),
-                data: (members) => Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: members.map((m) {
-                    final selected = _selectedParticipantIds.contains(m.user.id);
-                    return FilterChip(
-                      avatar: UserAvatar(user: m.user, radius: 12),
-                      label: Text(m.user.name),
-                      selected: selected,
-                      onSelected: (val) {
-                        setState(() {
-                          if (val) {
-                            _selectedParticipantIds.add(m.user.id);
-                          } else {
-                            _selectedParticipantIds.remove(m.user.id);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // Split type
-              Text('Split type', style: Theme.of(context).textTheme.labelLarge),
-              const SizedBox(height: 8),
-              SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(
+            // Split type
+            Text('Split type',
+                style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(
                     value: 'equal',
                     label: Text('Equal'),
-                    icon: Icon(Icons.balance_rounded, size: 16),
-                  ),
-                  ButtonSegment(
+                    icon: Icon(Icons.people_outline)),
+                ButtonSegment(
                     value: 'by_item',
-                    label: Text('By item'),
-                    icon: Icon(Icons.list_alt_rounded, size: 16),
-                  ),
-                  ButtonSegment(
-                    value: 'custom',
-                    label: Text('Custom'),
-                    icon: Icon(Icons.tune_rounded, size: 16),
-                  ),
-                ],
-                selected: {_splitType},
-                onSelectionChanged: (s) =>
-                    setState(() => _splitType = s.first),
-              ),
-              const SizedBox(height: 20),
-
-              // Receipt image preview
-              if (_receiptImage != null) ...[
-                Text('Receipt', style: Theme.of(context).textTheme.labelLarge),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    _receiptImage!,
-                    height: 160,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-                const SizedBox(height: 16),
+                    label: Text('By Item'),
+                    icon: Icon(Icons.receipt_long_outlined)),
               ],
+              selected: {_splitType},
+              onSelectionChanged: (s) =>
+                  setState(() => _splitType = s.first),
+            ),
+            const SizedBox(height: 16),
 
-              // OCR items checklist
-              if (_receiptItems.isNotEmpty) ...[
-                Text(
-                  'Receipt Items',
-                  style: Theme.of(context).textTheme.labelLarge,
-                ),
-                const SizedBox(height: 4),
-                ..._receiptItems.asMap().entries.map(
-                  (entry) {
-                    final i    = entry.key;
-                    final item = entry.value;
-                    return CheckboxListTile(
-                      value: item.isSelected,
-                      onChanged: (val) => setState(() {
-                        _receiptItems[i] =
-                            item.copyWith(isSelected: val ?? false);
-                      }),
-                      title: Text(item.name),
-                      secondary: Text(
-                        CurrencyUtils.formatCompact(item.price, _currency),
-                        style:
-                            const TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      dense: true,
-                      controlAffinity: ListTileControlAffinity.leading,
-                    );
-                  },
-                ),
-                const SizedBox(height: 8),
-              ],
+            // Participants
+            Text('Split with',
+                style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              children: members.map((m) {
+                final selected = _participantIds.contains(m.user.id);
+                return FilterChip(
+                  avatar: UserAvatar(user: m.user, radius: 12),
+                  label: Text(m.user.displayName),
+                  selected: selected,
+                  onSelected: (v) => setState(() {
+                    v
+                        ? _participantIds.add(m.user.id)
+                        : _participantIds.remove(m.user.id);
+                  }),
+                );
+              }).toList(),
+            ),
 
+            // Receipt items preview (if OCR was used)
+            if (_receiptItems.isNotEmpty) ...[
               const SizedBox(height: 16),
-
-              FilledButton.icon(
-                onPressed: _isLoading ? null : _submit,
-                icon: const Icon(Icons.save_rounded),
-                label: const Text('Save Expense'),
-              ),
+              Text('Receipt Items',
+                  style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: 8),
+              ..._receiptItems.map((item) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    leading: const Icon(Icons.check_circle_outline,
+                        color: Colors.green),
+                    title: Text(item.name),
+                    trailing: Text(
+                        CurrencyUtils.format(item.price,
+                            currency: _currency),
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
+                  )),
             ],
-          ),
+
+            const SizedBox(height: 80),
+          ],
         ),
       ),
     );

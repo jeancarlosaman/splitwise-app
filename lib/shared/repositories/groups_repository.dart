@@ -1,145 +1,95 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
 import '../../features/groups/models/group.dart';
 import '../../features/groups/models/group_member.dart';
 import '../../features/auth/models/app_user.dart';
 import 'supabase_client.dart';
 
 class GroupsRepository {
-  const GroupsRepository(this._client);
+  Future<List<ExpenseGroup>> getGroups() async {
+    final userId = supabase.auth.currentUser!.id;
+    // Get group IDs the user belongs to
+    final memberRows = await supabase
+        .from('group_members')
+        .select('group_id')
+        .eq('user_id', userId);
 
-  final SupabaseClient _client;
+    final groupIds =
+        (memberRows as List).map((e) => e['group_id'] as String).toList();
+    if (groupIds.isEmpty) return [];
 
-  /// Returns all groups the current user belongs to.
-  Future<List<ExpenseGroup>> fetchMyGroups() async {
-    final userId = _client.auth.currentUser!.id;
-    final data = await _client
+    final data = await supabase
         .from('expense_groups')
-        .select('''
-          *,
-          group_members!inner(user_id)
-        ''')
-        .eq('group_members.user_id', userId)
+        .select()
+        .inFilter('id', groupIds)
         .order('created_at', ascending: false);
 
     return (data as List).map((e) => ExpenseGroup.fromJson(e)).toList();
   }
 
-  /// Fetches a single group by [groupId].
-  Future<ExpenseGroup> fetchGroup(String groupId) async {
-    final data = await _client
-        .from('expense_groups')
-        .select()
-        .eq('id', groupId)
-        .single();
-    return ExpenseGroup.fromJson(data);
-  }
-
-  /// Creates a new group and adds the creator as a member.
   Future<ExpenseGroup> createGroup({
     required String name,
     required String emoji,
-    required String createdBy,
   }) async {
-    // Insert group
-    final groupData = await _client
+    final userId = supabase.auth.currentUser!.id;
+    final data = await supabase
         .from('expense_groups')
-        .insert({
-          'name': name,
-          'emoji': emoji,
-          'created_by': createdBy,
-        })
+        .insert({'name': name, 'emoji': emoji, 'created_by': userId})
         .select()
         .single();
 
-    final group = ExpenseGroup.fromJson(groupData);
+    final group = ExpenseGroup.fromJson(data);
 
     // Add creator as member
-    await _client.from('group_members').insert({
+    await supabase.from('group_members').insert({
       'group_id': group.id,
-      'user_id': createdBy,
+      'user_id': userId,
     });
 
     return group;
   }
 
-  /// Fetches all members of [groupId] with their profile info.
-  Future<List<GroupMember>> fetchMembers(String groupId) async {
-    final data = await _client
+  Future<List<GroupMember>> getGroupMembers(String groupId) async {
+    final data = await supabase
         .from('group_members')
-        .select('''
-          *,
-          profiles(*)
-        ''')
+        .select('*, profiles(*)')
         .eq('group_id', groupId);
 
-    return (data as List).map((e) => GroupMember.fromJson(e)).toList();
+    return (data as List).map((e) {
+      final profile = e['profiles'] as Map<String, dynamic>;
+      return GroupMember(
+        id: e['id'] as String,
+        groupId: groupId,
+        user: AppUser.fromJson(profile),
+        joinedAt: DateTime.parse(e['joined_at'] as String),
+      );
+    }).toList();
   }
 
-  /// Invites a user (by email) to [groupId].
-  /// Returns null if the user was not found.
-  Future<GroupMember?> inviteMemberByEmail({
+  Future<void> addMemberByEmail({
     required String groupId,
     required String email,
   }) async {
-    // Look up the profile by email
-    final profileData = await _client
+    final profileData = await supabase
         .from('profiles')
-        .select()
-        .eq('email', email.toLowerCase().trim())
+        .select('id')
+        .eq('email', email)
         .maybeSingle();
 
-    if (profileData == null) return null;
-
-    final userId = profileData['id'] as String;
-
-    // Check if already a member
-    final existing = await _client
-        .from('group_members')
-        .select()
-        .eq('group_id', groupId)
-        .eq('user_id', userId)
-        .maybeSingle();
-
-    if (existing != null) {
-      // Already a member — return existing
-      return GroupMember(
-        id: existing['id'] as String,
-        groupId: groupId,
-        user: AppUser.fromJson(profileData),
-        joinedAt: DateTime.parse(existing['joined_at'] as String),
-      );
+    if (profileData == null) {
+      throw Exception('No user found with email $email');
     }
 
-    final memberData = await _client
-        .from('group_members')
-        .insert({
-          'group_id': groupId,
-          'user_id': userId,
-        })
-        .select('''
-          *,
-          profiles(*)
-        ''')
-        .single();
-
-    return GroupMember.fromJson(memberData);
+    await supabase.from('group_members').insert({
+      'group_id': groupId,
+      'user_id': profileData['id'],
+    });
   }
 
-  /// Removes a member from a group.
-  Future<void> removeMember({
-    required String groupId,
-    required String userId,
-  }) async {
-    await _client
+  Future<void> leaveGroup(String groupId) async {
+    final userId = supabase.auth.currentUser!.id;
+    await supabase
         .from('group_members')
         .delete()
         .eq('group_id', groupId)
         .eq('user_id', userId);
   }
 }
-
-final groupsRepositoryProvider = Provider<GroupsRepository>((ref) {
-  return GroupsRepository(ref.watch(supabaseClientProvider));
-});
