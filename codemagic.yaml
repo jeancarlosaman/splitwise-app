@@ -22,7 +22,7 @@ workflows:
           # Restore custom Info.plist (camera, mic, speech permissions)
           cp /tmp/Info.plist.bak ios/Runner/Info.plist
 
-      - name: Patch DEVELOPMENT_TEAM in pbxproj
+      - name: Disable code signing in pbxproj
         script: |
           python3 << 'PYEOF'
           import re
@@ -31,34 +31,48 @@ workflows:
           with open(path, 'r') as f:
               content = f.read()
 
-          before = [l.strip() for l in content.split('\n') if 'DEVELOPMENT_TEAM' in l]
-          print(f'DEVELOPMENT_TEAM entries before patch: {len(before)}')
-          for l in before:
-              print(f'  {repr(l)}')
+          # Keys we want present in every buildSettings block so xcodebuild
+          # accepts the build without a Development Team / provisioning profile.
+          injected_keys = {
+              'CODE_SIGNING_ALLOWED':  'NO',
+              'CODE_SIGNING_REQUIRED': 'NO',
+              'CODE_SIGN_IDENTITY':    '""',
+              'CODE_SIGN_STYLE':       'Manual',
+              'DEVELOPMENT_TEAM':      '""',
+              'PROVISIONING_PROFILE_SPECIFIER': '""',
+          }
 
-          # Replace ANY format:  DEVELOPMENT_TEAM = "";  /  DEVELOPMENT_TEAM = ;  / etc.
-          patched = re.sub(
-              r'DEVELOPMENT_TEAM\s*=\s*[^;]*;',
-              'DEVELOPMENT_TEAM = FAKETEAM00;',
-              content
-          )
-
-          # If the key didn't exist at all, inject it after every CODE_SIGN_STYLE line
-          if patched == content:
-              print('No DEVELOPMENT_TEAM found — injecting after CODE_SIGN_STYLE entries')
-              patched = re.sub(
-                  r'(CODE_SIGN_STYLE\s*=\s*\w+;)',
-                  r'\1\n\t\t\t\tDEVELOPMENT_TEAM = FAKETEAM00;',
-                  content
+          def patch_block(m):
+              indent = m.group('indent')
+              body = m.group('body')
+              # Strip any existing occurrences of the keys we're about to set.
+              for key in injected_keys:
+                  body = re.sub(
+                      rf'^[ \t]*{key}\s*=\s*[^;]*;\s*\n?',
+                      '',
+                      body,
+                      flags=re.MULTILINE,
+                  )
+              inner_indent = indent + '\t'
+              additions = ''.join(
+                  f'{inner_indent}{k} = {v};\n' for k, v in injected_keys.items()
               )
+              return f'{indent}buildSettings = {{\n{additions}{body}{indent}}};'
+
+          # Match every `buildSettings = { ... };` block (non-greedy, dotall).
+          pattern = re.compile(
+              r'(?P<indent>[ \t]*)buildSettings = \{\n(?P<body>.*?)(?P=indent)\};',
+              re.DOTALL,
+          )
+          patched, n = pattern.subn(patch_block, content)
+          print(f'Patched {n} buildSettings block(s)')
 
           with open(path, 'w') as f:
               f.write(patched)
 
-          after = [l.strip() for l in patched.split('\n') if 'DEVELOPMENT_TEAM' in l]
-          print(f'DEVELOPMENT_TEAM entries after patch: {len(after)}')
-          for l in after:
-              print(f'  {repr(l)}')
+          for key in injected_keys:
+              count = len(re.findall(rf'{key}\s*=', patched))
+              print(f'  {key}: {count} occurrence(s)')
           PYEOF
 
       - name: Build iOS (no codesign — Sideloadly will sign)
