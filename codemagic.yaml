@@ -88,23 +88,23 @@ workflows:
           with open(path, 'r') as f:
               content = f.read()
 
-          hook = """
-            config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
-            config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'
-            config.build_settings['CODE_SIGN_IDENTITY'] = ''
-            config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ''
-"""
+          hook_lines = [
+              "          target.build_configurations.each do |config|",
+              "            config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'",
+              "            config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'",
+              "            config.build_settings['CODE_SIGN_IDENTITY'] = ''",
+              "            config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ''",
+              "          end",
+          ]
+          hook = "\n" + "\n".join(hook_lines)
           marker = "flutter_additional_ios_build_settings(target)"
           if marker in content and "CODE_SIGNING_ALLOWED" not in content:
-              content = content.replace(
-                  marker,
-                  marker + "\n          target.build_configurations.each do |config|" + hook + "          end",
-              )
+              content = content.replace(marker, marker + hook)
               with open(path, 'w') as f:
                   f.write(content)
               print('Patched Podfile post_install to disable Pods signing')
           else:
-              print('Podfile already patched or marker not found — skipping')
+              print('Podfile already patched or marker not found - skipping')
           PYEOF
           # Re-run pod install so the new build settings take effect
           cd ios && pod install && cd -
