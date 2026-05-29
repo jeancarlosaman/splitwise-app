@@ -6,7 +6,6 @@ import '../../../core/utils/currency_utils.dart';
 import '../../../core/theme.dart';
 import '../../../shared/widgets/user_avatar.dart';
 
-/// Redesigned receipt review: clean card list, slide-up member assignment.
 class ReceiptReviewScreen extends StatefulWidget {
   final List<ReceiptItem> items;
   final List<GroupMember> members;
@@ -36,30 +35,46 @@ class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
 
   double get _selectedTotal => [
         for (var i = 0; i < _items.length; i++)
-          if (_included[i]) _items[i].price
-      ].fold(0.0, (a, b) => a + b);
+          if (_included[i]) _items[i].price,
+      ].fold<double>(0.0, (a, b) => a + b);
 
   int get _selectedCount => _included.where((v) => v).length;
 
   void _toggleMember(int idx, String userId) {
     setState(() {
       final current = List<String>.from(_items[idx].assignedTo);
-      current.contains(userId)
-          ? current.remove(userId)
-          : current.add(userId);
+      current.contains(userId) ? current.remove(userId) : current.add(userId);
       _items[idx] = _items[idx].copyWith(assignedTo: current);
     });
+  }
+
+  // Safe helper — returns empty string if member not found
+  String _namesFor(int idx) {
+    return _items[idx]
+        .assignedTo
+        .map((id) {
+          try {
+            return widget.members.firstWhere((m) => m.user.id == id).user.displayName;
+          } catch (_) {
+            return null;
+          }
+        })
+        .whereType<String>()
+        .join(', ');
   }
 
   void _showAssignSheet(int idx) {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
+      backgroundColor: AppTheme.surface,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSheet) => Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+          padding: EdgeInsets.fromLTRB(
+              20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -67,71 +82,94 @@ class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
               // Handle
               Center(
                 child: Container(
-                  width: 40,
-                  height: 4,
+                  width: 36, height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
+                    color: AppTheme.border,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              Text(
-                _items[idx].name,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w700, fontSize: 17),
-              ),
-              Text(
-                CurrencyUtils.format(_items[idx].price),
-                style: const TextStyle(
-                    color: AppTheme.primary,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15),
-              ),
-              const SizedBox(height: 16),
-              const Text('Assign to:',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13)),
-              const SizedBox(height: 12),
-              ...widget.members.map((m) {
-                final assigned =
-                    _items[idx].assignedTo.contains(m.user.id);
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: UserAvatar(user: m.user, radius: 20),
-                  title: Text(m.user.displayName,
-                      style: const TextStyle(fontWeight: FontWeight.w500)),
-                  trailing: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    width: 26,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      gradient: assigned
-                          ? AppTheme.primaryGradient
-                          : null,
-                      border: assigned
-                          ? null
-                          : Border.all(color: Colors.grey.shade400),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: assigned
-                        ? const Icon(Icons.check_rounded,
-                            color: Colors.white, size: 16)
-                        : null,
+              const SizedBox(height: 20),
+              // Item name + price
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(_items[idx].name,
+                      style: const TextStyle(color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.w700, fontSize: 17)),
                   ),
-                  onTap: () {
-                    _toggleMember(idx, m.user.id);
-                    setSheet(() {});
-                  },
-                );
-              }),
-              const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppTheme.greenSubtle,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppTheme.green.withOpacity(0.3)),
+                    ),
+                    child: Text(CurrencyUtils.format(_items[idx].price),
+                      style: const TextStyle(color: AppTheme.green,
+                          fontWeight: FontWeight.w700, fontSize: 15)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Text('Assign to members:',
+                style: TextStyle(color: AppTheme.textSecondary,
+                    fontWeight: FontWeight.w600, fontSize: 13)),
+              const SizedBox(height: 12),
+              if (widget.members.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Text('No members in this group yet.',
+                      style: TextStyle(color: AppTheme.textSecondary)),
+                )
+              else
+                ...widget.members.map((m) {
+                  final assigned = _items[idx].assignedTo.contains(m.user.id);
+                  return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        _toggleMember(idx, m.user.id);
+                        setSheet(() {});
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                        child: Row(
+                          children: [
+                            UserAvatar(user: m.user, radius: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(m.user.displayName,
+                                style: const TextStyle(color: AppTheme.textPrimary,
+                                    fontWeight: FontWeight.w500, fontSize: 15)),
+                            ),
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              width: 26, height: 26,
+                              decoration: BoxDecoration(
+                                color: assigned ? AppTheme.green : Colors.transparent,
+                                border: Border.all(
+                                  color: assigned ? AppTheme.green : AppTheme.border,
+                                  width: 1.5,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: assigned
+                                  ? const Icon(Icons.check_rounded, color: Colors.black, size: 16)
+                                  : null,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
-                child: FilledButton(
+                child: ElevatedButton(
                   onPressed: () => Navigator.pop(ctx),
-                  style: FilledButton.styleFrom(
-                      backgroundColor: AppTheme.primary),
                   child: const Text('Done'),
                 ),
               ),
@@ -145,135 +183,128 @@ class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
   void _confirm() {
     final result = [
       for (var i = 0; i < _items.length; i++)
-        if (_included[i]) _items[i]
+        if (_included[i]) _items[i],
     ];
     Navigator.pop(context, result);
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Receipt')),
+      backgroundColor: AppTheme.black,
+      appBar: AppBar(
+        title: const Text('Review Receipt'),
+        actions: [
+          if (widget.detectedTotal != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppTheme.greenSubtle,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppTheme.green.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    'Total: ${CurrencyUtils.format(widget.detectedTotal!)}',
+                    style: const TextStyle(color: AppTheme.green,
+                        fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
       body: Column(
         children: [
-          // ── Summary banner ────────────────────────────────────
+          // ── Summary banner ──────────────────────────────────
           Container(
             margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              gradient: AppTheme.primaryGradient,
+              color: AppTheme.greenSubtle,
               borderRadius: BorderRadius.circular(18),
-              boxShadow: [
-                BoxShadow(
-                  color: AppTheme.primary.withOpacity(0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              border: Border.all(color: AppTheme.green.withOpacity(0.3)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.receipt_long_rounded,
-                    color: Colors.white70, size: 22),
+                const Icon(Icons.receipt_long_rounded, color: AppTheme.green, size: 22),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     '$_selectedCount item${_selectedCount == 1 ? '' : 's'} selected',
-                    style: const TextStyle(
-                        color: Colors.white70, fontSize: 14),
+                    style: const TextStyle(color: AppTheme.textSecondary, fontSize: 14),
                   ),
                 ),
                 Text(
                   CurrencyUtils.format(_selectedTotal),
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 20,
-                  ),
+                  style: const TextStyle(color: AppTheme.green,
+                      fontWeight: FontWeight.w800, fontSize: 20),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
 
-          // ── Hint ─────────────────────────────────────────────
+          // ── Hint ────────────────────────────────────────────
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
             child: Row(
               children: [
-                Icon(Icons.touch_app_rounded,
-                    size: 14,
-                    color: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.4)),
+                const Icon(Icons.touch_app_rounded, size: 14, color: AppTheme.textSecondary),
                 const SizedBox(width: 6),
-                Text(
-                  'Tap an item to assign it to members',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withOpacity(0.4),
-                      ),
-                ),
+                const Text('Tap an item to assign it to members',
+                  style: TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
               ],
             ),
           ),
 
-          // ── Items list ────────────────────────────────────────
+          // ── Items list ───────────────────────────────────────
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
               itemCount: _items.length,
               itemBuilder: (context, i) {
                 final item = _items[i];
                 final included = _included[i];
-                final assignedNames = item.assignedTo
-                    .map((id) => widget.members
-                        .firstWhere((m) => m.user.id == id,
-                            orElse: () => throw '')
-                        .user
-                        .displayName)
-                    .join(', ');
+                final assignedNames = _namesFor(i);
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Material(
-                    color: isDark ? AppTheme.cardDark : Colors.white,
+                    color: AppTheme.surface,
                     borderRadius: BorderRadius.circular(16),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
                       onTap: included ? () => _showAssignSheet(i) : null,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 14),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: included ? AppTheme.border : AppTheme.border.withOpacity(0.3),
+                            width: 0.5,
+                          ),
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                         child: Row(
                           children: [
                             // Checkbox
                             GestureDetector(
-                              onTap: () =>
-                                  setState(() => _included[i] = !included),
+                              onTap: () => setState(() => _included[i] = !included),
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 180),
-                                width: 26,
-                                height: 26,
+                                width: 26, height: 26,
                                 decoration: BoxDecoration(
-                                  gradient: included
-                                      ? AppTheme.primaryGradient
-                                      : null,
-                                  border: included
-                                      ? null
-                                      : Border.all(
-                                          color: Colors.grey.shade400,
-                                          width: 1.5),
+                                  color: included ? AppTheme.green : Colors.transparent,
+                                  border: Border.all(
+                                    color: included ? AppTheme.green : AppTheme.border,
+                                    width: 1.5,
+                                  ),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: included
-                                    ? const Icon(Icons.check_rounded,
-                                        color: Colors.white, size: 16)
+                                    ? const Icon(Icons.check_rounded, color: Colors.black, size: 16)
                                     : null,
                               ),
                             ),
@@ -281,49 +312,29 @@ class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
                             // Name + assignees
                             Expanded(
                               child: Column(
-                                crossAxisAlignment:
-                                    CrossAxisAlignment.start,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
                                     item.name,
                                     style: TextStyle(
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 15,
-                                      decoration: included
-                                          ? null
-                                          : TextDecoration.lineThrough,
+                                      fontWeight: FontWeight.w600, fontSize: 15,
                                       color: included
-                                          ? null
-                                          : Theme.of(context)
-                                              .colorScheme
-                                              .onSurface
-                                              .withOpacity(0.4),
+                                          ? AppTheme.textPrimary
+                                          : AppTheme.textSecondary,
+                                      decoration: included ? null : TextDecoration.lineThrough,
+                                      decorationColor: AppTheme.textSecondary,
                                     ),
                                   ),
-                                  if (included &&
-                                      assignedNames.isNotEmpty) ...[
+                                  if (included && assignedNames.isNotEmpty) ...[
                                     const SizedBox(height: 3),
-                                    Text(
-                                      assignedNames,
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: AppTheme.primary
-                                            .withOpacity(0.8),
-                                      ),
-                                    ),
-                                  ] else if (included &&
-                                      widget.members.isNotEmpty) ...[
+                                    Text(assignedNames,
+                                      style: const TextStyle(
+                                          fontSize: 12, color: AppTheme.green)),
+                                  ] else if (included && widget.members.isNotEmpty) ...[
                                     const SizedBox(height: 3),
-                                    Text(
-                                      'Tap to assign →',
+                                    const Text('Tap to assign →',
                                       style: TextStyle(
-                                        fontSize: 12,
-                                        color: Theme.of(context)
-                                            .colorScheme
-                                            .onSurface
-                                            .withOpacity(0.35),
-                                      ),
-                                    ),
+                                          fontSize: 12, color: AppTheme.textSecondary)),
                                   ],
                                 ],
                               ),
@@ -332,14 +343,8 @@ class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
                             Text(
                               CurrencyUtils.format(item.price),
                               style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 15,
-                                color: included
-                                    ? AppTheme.primary
-                                    : Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withOpacity(0.3),
+                                fontWeight: FontWeight.w700, fontSize: 15,
+                                color: included ? AppTheme.green : AppTheme.textSecondary,
                               ),
                             ),
                           ],
@@ -357,8 +362,7 @@ class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           child: GradientButton(
-            label:
-                'Use $_selectedCount Items  ·  ${CurrencyUtils.format(_selectedTotal)}',
+            label: 'Use $_selectedCount Items  ·  ${CurrencyUtils.format(_selectedTotal)}',
             icon: Icons.check_rounded,
             onPressed: _selectedCount > 0 ? _confirm : null,
           ),

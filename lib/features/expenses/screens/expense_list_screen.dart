@@ -18,18 +18,18 @@ class ExpenseListScreen extends ConsumerWidget {
     final myId = supabase.auth.currentUser?.id;
 
     return Scaffold(
+      backgroundColor: AppTheme.black,
       appBar: AppBar(
         title: const Text('Expenses'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            onPressed: () =>
-                ref.read(groupExpensesProvider(groupId).notifier).refresh(),
+            onPressed: () => ref.read(groupExpensesProvider(groupId).notifier).refresh(),
           ),
         ],
       ),
       body: expensesAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.green)),
         error: (e, _) => Center(child: Text('$e')),
         data: (expenses) {
           if (expenses.isEmpty) {
@@ -37,29 +37,26 @@ class ExpenseListScreen extends ConsumerWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('🧾', style: TextStyle(fontSize: 56)),
-                  const SizedBox(height: 16),
-                  Text('No expenses yet',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tap + to add the first one',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .onSurface
-                              .withOpacity(0.5),
-                        ),
+                  Container(
+                    width: 80, height: 80,
+                    decoration: BoxDecoration(
+                      color: AppTheme.greenSubtle,
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: AppTheme.green.withOpacity(0.3)),
+                    ),
+                    child: const Center(child: Text('🧾', style: TextStyle(fontSize: 38))),
                   ),
+                  const SizedBox(height: 20),
+                  const Text('No expenses yet',
+                    style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w700, fontSize: 20)),
+                  const SizedBox(height: 8),
+                  const Text('Tap + to add the first one',
+                    style: TextStyle(color: AppTheme.textSecondary, fontSize: 14)),
                 ],
               ),
             );
           }
 
-          // Group by date
           final grouped = <String, List<dynamic>>{};
           for (final e in expenses) {
             final key = DateFormat('MMMM d, yyyy').format(e.createdAt);
@@ -67,10 +64,11 @@ class ExpenseListScreen extends ConsumerWidget {
           }
 
           return RefreshIndicator(
-            onRefresh: () =>
-                ref.read(groupExpensesProvider(groupId).notifier).refresh(),
+            color: AppTheme.green,
+            backgroundColor: AppTheme.surface,
+            onRefresh: () => ref.read(groupExpensesProvider(groupId).notifier).refresh(),
             child: ListView.builder(
-              padding: const EdgeInsets.only(bottom: 100, top: 4),
+              padding: const EdgeInsets.only(bottom: 100, top: 8),
               itemCount: grouped.length,
               itemBuilder: (context, sectionIdx) {
                 final date = grouped.keys.elementAt(sectionIdx);
@@ -80,30 +78,15 @@ class ExpenseListScreen extends ConsumerWidget {
                   children: [
                     Padding(
                       padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                      child: Text(
-                        date,
-                        style: Theme.of(context)
-                            .textTheme
-                            .labelMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.45),
-                              letterSpacing: 0.5,
-                            ),
-                      ),
+                      child: Text(date,
+                        style: const TextStyle(color: AppTheme.textSecondary,
+                            fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
                     ),
-                    ...items.map((expense) {
-                      final isPayer = expense.paidBy == myId;
-                      return _ExpenseCard(
-                        expense: expense,
-                        isPayer: isPayer,
-                        onTap: () => context.push(
-                            '/groups/$groupId/expenses/${expense.id}'),
-                      );
-                    }),
+                    ...items.map((expense) => _ExpenseCard(
+                      expense: expense,
+                      isPayer: expense.paidBy == myId,
+                      onTap: () => context.push('/groups/$groupId/expenses/${expense.id}'),
+                    )),
                   ],
                 );
               },
@@ -111,27 +94,10 @@ class ExpenseListScreen extends ConsumerWidget {
           );
         },
       ),
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          gradient: AppTheme.primaryGradient,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.primary.withOpacity(0.4),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: FloatingActionButton.extended(
-          onPressed: () => context.push('/groups/$groupId/add-expense'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          icon: const Icon(Icons.add_rounded, color: Colors.white),
-          label: const Text('Add',
-              style: TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.w600)),
-        ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/groups/$groupId/add-expense'),
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add', style: TextStyle(fontWeight: FontWeight.w700)),
       ),
     );
   }
@@ -141,83 +107,63 @@ class _ExpenseCard extends StatelessWidget {
   final dynamic expense;
   final bool isPayer;
   final VoidCallback onTap;
-
-  const _ExpenseCard({
-    required this.expense,
-    required this.isPayer,
-    required this.onTap,
-  });
+  const _ExpenseCard({required this.expense, required this.isPayer, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Material(
-        color: isDark ? AppTheme.cardDark : Colors.white,
+        color: AppTheme.surface,
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: onTap,
-          child: Padding(
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppTheme.border, width: 0.5),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
-                // Icon
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 46, height: 46,
                   decoration: BoxDecoration(
-                    gradient: isPayer
-                        ? AppTheme.primaryGradient
-                        : const LinearGradient(
-                            colors: [Color(0xFF6B7280), Color(0xFF4B5563)]),
-                    borderRadius: BorderRadius.circular(12),
+                    color: isPayer ? AppTheme.greenSubtle : AppTheme.surface2,
+                    borderRadius: BorderRadius.circular(13),
+                    border: Border.all(
+                      color: isPayer ? AppTheme.green.withOpacity(0.3) : AppTheme.border,
+                    ),
                   ),
                   child: Icon(
                     expense.receiptUrl != null
-                        ? Icons.receipt_rounded
-                        : Icons.attach_money_rounded,
-                    color: Colors.white,
+                        ? Icons.receipt_rounded : Icons.attach_money_rounded,
+                    color: isPayer ? AppTheme.green : AppTheme.textSecondary,
                     size: 20,
                   ),
                 ),
                 const SizedBox(width: 14),
-                // Details
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        expense.description,
-                        style: const TextStyle(
+                      Text(expense.description,
+                        style: const TextStyle(color: AppTheme.textPrimary,
                             fontWeight: FontWeight.w600, fontSize: 15),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 3),
                       Text(
-                        isPayer
-                            ? 'You paid'
-                            : '${expense.paidByName ?? 'Someone'} paid',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .onSurface
-                                  .withOpacity(0.5),
-                            ),
-                      ),
+                        isPayer ? 'You paid' : '${expense.paidByName ?? 'Someone'} paid',
+                        style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
                     ],
                   ),
                 ),
-                // Amount
                 Text(
-                  CurrencyUtils.format(expense.amount,
-                      currency: expense.currency),
+                  CurrencyUtils.format(expense.amount, currency: expense.currency),
                   style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                    color: isPayer ? AppTheme.primary : null,
+                    fontWeight: FontWeight.w700, fontSize: 16,
+                    color: isPayer ? AppTheme.green : AppTheme.textPrimary,
                   ),
                 ),
               ],
