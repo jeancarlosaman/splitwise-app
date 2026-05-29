@@ -66,7 +66,7 @@ class ReceiptParser {
 
     // If no explicit total found, sum items
     if (total == null && items.isNotEmpty) {
-      total = items.fold(0.0, (sum, item) => sum + item.price);
+      total = items.fold<double>(0.0, (sum, item) => sum + item.price);
     }
 
     return ParsedReceipt(merchant: merchant, items: items, total: total);
