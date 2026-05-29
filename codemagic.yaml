@@ -17,24 +17,54 @@ workflows:
         script: |
           # Back up our custom Info.plist
           cp ios/Runner/Info.plist /tmp/Info.plist.bak
-          # Generate the full Xcode project structure (xcodeproj, xcworkspace, AppDelegate, etc.)
+          # Regenerate the full Xcode project structure
           flutter create --platforms=ios --project-name splitwise_app --org com.jeancarlosaman .
-          # Restore our custom Info.plist (camera, mic, speech permissions)
+          # Restore custom Info.plist (camera, mic, speech permissions)
           cp /tmp/Info.plist.bak ios/Runner/Info.plist
+
+      - name: Patch DEVELOPMENT_TEAM in pbxproj
+        script: |
+          python3 << 'PYEOF'
+          import re
+
+          path = 'ios/Runner.xcodeproj/project.pbxproj'
+          with open(path, 'r') as f:
+              content = f.read()
+
+          before = [l.strip() for l in content.split('\n') if 'DEVELOPMENT_TEAM' in l]
+          print(f'DEVELOPMENT_TEAM entries before patch: {len(before)}')
+          for l in before:
+              print(f'  {repr(l)}')
+
+          # Replace ANY format:  DEVELOPMENT_TEAM = "";  /  DEVELOPMENT_TEAM = ;  / etc.
+          patched = re.sub(
+              r'DEVELOPMENT_TEAM\s*=\s*[^;]*;',
+              'DEVELOPMENT_TEAM = FAKETEAM00;',
+              content
+          )
+
+          # If the key didn't exist at all, inject it after every CODE_SIGN_STYLE line
+          if patched == content:
+              print('No DEVELOPMENT_TEAM found — injecting after CODE_SIGN_STYLE entries')
+              patched = re.sub(
+                  r'(CODE_SIGN_STYLE\s*=\s*\w+;)',
+                  r'\1\n\t\t\t\tDEVELOPMENT_TEAM = FAKETEAM00;',
+                  content
+              )
+
+          with open(path, 'w') as f:
+              f.write(patched)
+
+          after = [l.strip() for l in patched.split('\n') if 'DEVELOPMENT_TEAM' in l]
+          print(f'DEVELOPMENT_TEAM entries after patch: {len(after)}')
+          for l in after:
+              print(f'  {repr(l)}')
+          PYEOF
 
       - name: Build iOS (no codesign — Sideloadly will sign)
         script: |
-          # Flutter requires a non-empty DEVELOPMENT_TEAM even with --no-codesign.
-          # Patch the pbxproj with a dummy team so the preflight check passes.
-          sed -i '' 's/DEVELOPMENT_TEAM = "";/DEVELOPMENT_TEAM = FAKETEAM00;/g' \
-            ios/Runner.xcodeproj/project.pbxproj
-          echo "Team entries after patch:"
-          grep DEVELOPMENT_TEAM ios/Runner.xcodeproj/project.pbxproj | sort -u
-
-          # Build — --no-codesign tells Xcode to skip actual signing
           flutter build ios --release --no-codesign
 
-          # Package .app into IPA for Sideloadly
           APP_PATH=$(find build/ios/iphoneos -name "*.app" -maxdepth 3 | head -1)
           echo "Found app bundle at: $APP_PATH"
           if [ -z "$APP_PATH" ]; then
