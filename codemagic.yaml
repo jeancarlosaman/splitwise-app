@@ -24,13 +24,13 @@ workflows:
 
       - name: Build iOS (no codesign — Sideloadly will sign)
         script: |
-          flutter build ipa --release --no-codesign
-          # flutter skips IPA creation with --no-codesign; package manually from xcarchive
-          # Use find to locate the .app bundle regardless of exact path
-          APP_PATH=$(find build/ios/archive -name "*.app" -maxdepth 5 | head -1)
+          # flutter build ios builds the .app without needing a Dev Team
+          flutter build ios --release --no-codesign
+          # Package .app into an IPA that Sideloadly can install
+          APP_PATH=$(find build/ios/iphoneos -name "*.app" -maxdepth 2 | head -1)
           echo "Found app bundle at: $APP_PATH"
           if [ -z "$APP_PATH" ]; then
-            echo "ERROR: No .app bundle found in xcarchive" && exit 1
+            echo "ERROR: No .app bundle found" && exit 1
           fi
           mkdir -p build/ios/ipa/Payload
           cp -r "$APP_PATH" build/ios/ipa/Payload/
