@@ -10,106 +10,15 @@ workflows:
       cocoapods: default
 
     scripts:
-      - name: Get Flutter packages
+      - name: Flutter pub get
         script: flutter pub get
 
-      - name: Generate iOS project files
+      - name: Pod install
         script: |
-          # Back up our custom Info.plist
-          cp ios/Runner/Info.plist /tmp/Info.plist.bak
-          # Regenerate the full Xcode project structure
-          flutter create --platforms=ios --project-name splitwise_app --org com.jeancarlosaman .
-          # Restore custom Info.plist (camera, mic, speech permissions)
-          cp /tmp/Info.plist.bak ios/Runner/Info.plist
+          cd ios
+          pod install --repo-update
 
-      - name: Disable code signing in pbxproj
-        script: |
-          python3 << 'PYEOF'
-          import re
-
-          path = 'ios/Runner.xcodeproj/project.pbxproj'
-          with open(path, 'r') as f:
-              content = f.read()
-
-          # Keys we want present in every buildSettings block so xcodebuild's
-          # project-validation phase accepts the build. We use Automatic style
-          # with a fake (but well-formed) team ID — xcodebuild won't contact
-          # Apple to verify it because CODE_SIGNING_ALLOWED=NO skips signing.
-          # Manual style fails here because empty PROVISIONING_PROFILE_SPECIFIER
-          # triggers "requires a provisioning profile" during validation.
-          injected_keys = {
-              'CODE_SIGNING_ALLOWED':  'NO',
-              'CODE_SIGNING_REQUIRED': 'NO',
-              'CODE_SIGN_IDENTITY':    '""',
-              'CODE_SIGN_STYLE':       'Automatic',
-              'DEVELOPMENT_TEAM':      'ABCDE12345',
-          }
-          # Keys we want REMOVED from every buildSettings block if present
-          # (they conflict with Automatic-style signing).
-          stripped_keys = ['PROVISIONING_PROFILE_SPECIFIER', 'PROVISIONING_PROFILE']
-
-          def patch_block(m):
-              indent = m.group('indent')
-              body = m.group('body')
-              # Strip any existing occurrences of the keys we set or remove.
-              for key in list(injected_keys.keys()) + stripped_keys:
-                  body = re.sub(
-                      rf'^[ \t]*{key}\s*=\s*[^;]*;\s*\n?',
-                      '',
-                      body,
-                      flags=re.MULTILINE,
-                  )
-              inner_indent = indent + '\t'
-              additions = ''.join(
-                  f'{inner_indent}{k} = {v};\n' for k, v in injected_keys.items()
-              )
-              return f'{indent}buildSettings = {{\n{additions}{body}{indent}}};'
-
-          # Match every `buildSettings = { ... };` block (non-greedy, dotall).
-          pattern = re.compile(
-              r'(?P<indent>[ \t]*)buildSettings = \{\n(?P<body>.*?)(?P=indent)\};',
-              re.DOTALL,
-          )
-          patched, n = pattern.subn(patch_block, content)
-          print(f'Patched {n} buildSettings block(s)')
-
-          with open(path, 'w') as f:
-              f.write(patched)
-
-          for key in injected_keys:
-              count = len(re.findall(rf'{key}\s*=', patched))
-              print(f'  {key}: {count} occurrence(s)')
-          PYEOF
-
-      - name: Disable code signing on Pods (Podfile post_install)
-        script: |
-          python3 << 'PYEOF'
-          path = 'ios/Podfile'
-          with open(path, 'r') as f:
-              content = f.read()
-
-          hook_lines = [
-              "          target.build_configurations.each do |config|",
-              "            config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'",
-              "            config.build_settings['CODE_SIGNING_REQUIRED'] = 'NO'",
-              "            config.build_settings['CODE_SIGN_IDENTITY'] = ''",
-              "            config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ''",
-              "          end",
-          ]
-          hook = "\n" + "\n".join(hook_lines)
-          marker = "flutter_additional_ios_build_settings(target)"
-          if marker in content and "CODE_SIGNING_ALLOWED" not in content:
-              content = content.replace(marker, marker + hook)
-              with open(path, 'w') as f:
-                  f.write(content)
-              print('Patched Podfile post_install to disable Pods signing')
-          else:
-              print('Podfile already patched or marker not found - skipping')
-          PYEOF
-          # Re-run pod install so the new build settings take effect
-          cd ios && pod install && cd -
-
-      - name: Build iOS (no codesign — Sideloadly will sign)
+      - name: Build unsigned iOS app
         script: |
           set +e
           flutter build ios --release --no-codesign
@@ -117,16 +26,19 @@ workflows:
           set -e
 
           if [ $BUILD_EXIT -ne 0 ]; then
-            echo "==== flutter build failed (exit $BUILD_EXIT) — dumping recent xcodebuild logs ===="
+            echo "==== flutter build failed (exit $BUILD_EXIT) ===="
+            echo "==== Recent xcodebuild logs ===="
             ls -lt /tmp/xcodebuild_logs/ 2>/dev/null | head -5 || true
             LATEST_LOG=$(ls -t /tmp/xcodebuild_logs/*.log 2>/dev/null | head -1)
             if [ -n "$LATEST_LOG" ]; then
-              echo "==== Last 200 lines of $LATEST_LOG ===="
-              tail -n 200 "$LATEST_LOG"
+              echo "==== Last 300 lines of $LATEST_LOG ===="
+              tail -n 300 "$LATEST_LOG"
             fi
             exit $BUILD_EXIT
           fi
 
+      - name: Package unsigned IPA for Sideloadly
+        script: |
           APP_PATH=$(find build/ios/iphoneos -name "*.app" -maxdepth 3 | head -1)
           echo "Found app bundle at: $APP_PATH"
           if [ -z "$APP_PATH" ]; then

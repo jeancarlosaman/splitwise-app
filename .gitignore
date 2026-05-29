@@ -23,10 +23,12 @@ migrate_working_dir/
 
 # iOS build
 ios/.generated/
+ios/Flutter/.last_build_id
 ios/Flutter/App.framework
 ios/Flutter/Flutter.framework
 ios/Flutter/Flutter.podspec
 ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral/
 ios/Flutter/app.flx
 ios/Flutter/app.zip
 ios/Flutter/flutter_assets/
@@ -35,8 +37,7 @@ ios/ServiceDefinitions.json
 ios/Runner/GeneratedPluginRegistrant.*
 ios/Pods/
 ios/.symlinks/
-*.xcworkspace/
-Podfile.lock
+ios/Podfile.lock
 
 # Dart generated files
 *.g.dart
