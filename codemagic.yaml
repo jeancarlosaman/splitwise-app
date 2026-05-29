@@ -62,3 +62,64 @@ workflows:
         notify:
           success: true
           failure: true
+
+  ios-simulator:
+    name: iOS Simulator (Appetize)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+
+    scripts:
+      - name: Flutter pub get
+        script: flutter pub get
+
+      - name: Pod install
+        script: |
+          cd ios
+          pod install --repo-update
+
+      - name: Build iOS Simulator app
+        script: |
+          set +e
+          flutter build ios --simulator --debug
+          BUILD_EXIT=$?
+          set -e
+
+          if [ $BUILD_EXIT -ne 0 ]; then
+            echo "==== flutter build failed (exit $BUILD_EXIT) ===="
+            LATEST_LOG=$(ls -t /tmp/xcodebuild_logs/*.log 2>/dev/null | head -1)
+            if [ -n "$LATEST_LOG" ]; then
+              echo "==== Last 300 lines of $LATEST_LOG ===="
+              tail -n 300 "$LATEST_LOG"
+            fi
+            exit $BUILD_EXIT
+          fi
+
+      - name: Package simulator .app.zip for Appetize
+        script: |
+          APP_PATH=$(find build/ios/iphonesimulator -name "*.app" -maxdepth 3 | head -1)
+          echo "Found app bundle at: $APP_PATH"
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: No .app bundle found" && exit 1
+          fi
+          mkdir -p build/ios/appetize
+          cd "$(dirname "$APP_PATH")"
+          zip -r "$OLDPWD/build/ios/appetize/splitwise_app_simulator.zip" "$(basename "$APP_PATH")"
+          cd -
+          echo "Zip size: $(du -sh build/ios/appetize/splitwise_app_simulator.zip)"
+
+    artifacts:
+      - build/ios/appetize/*.zip
+      - /tmp/xcodebuild_logs/*.log
+
+    publishing:
+      email:
+        recipients:
+          - jeancarlosaman@gmail.com
+        notify:
+          success: true
+          failure: true
