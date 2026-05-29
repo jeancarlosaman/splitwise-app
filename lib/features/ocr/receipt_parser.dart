@@ -51,7 +51,7 @@ class ReceiptParser {
     // Merchant: first non-empty line that has no price and is reasonably short
     for (final line in lines) {
       if (!_pricePattern.hasMatch(line) && line.length < 60) {
-        merchant = line.replaceAll(RegExp(r'[^a-zA-Z0-9\s&\'\-]'), '').trim();
+        merchant = line.replaceAll(RegExp(r"[^a-zA-Z0-9\s&'\-]"), '').trim();
         if (merchant.isNotEmpty) break;
       }
     }
