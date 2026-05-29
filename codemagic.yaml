@@ -26,9 +26,17 @@ workflows:
         script: |
           flutter build ipa --release --no-codesign
           # flutter skips IPA creation with --no-codesign; package manually from xcarchive
+          # Use find to locate the .app bundle regardless of exact path
+          APP_PATH=$(find build/ios/archive -name "*.app" -maxdepth 5 | head -1)
+          echo "Found app bundle at: $APP_PATH"
+          if [ -z "$APP_PATH" ]; then
+            echo "ERROR: No .app bundle found in xcarchive" && exit 1
+          fi
           mkdir -p build/ios/ipa/Payload
-          cp -r "build/ios/archive/Runner.xcarchive/Products/Applications/Runner.app" build/ios/ipa/Payload/
-          cd build/ios/ipa && zip -r splitwise_app.ipa Payload/ && cd -
+          cp -r "$APP_PATH" build/ios/ipa/Payload/
+          cd build/ios/ipa && zip -r splitwise_app.ipa Payload/
+          echo "IPA size: $(du -sh splitwise_app.ipa)"
+          cd -
           rm -rf build/ios/ipa/Payload
 
     artifacts:
