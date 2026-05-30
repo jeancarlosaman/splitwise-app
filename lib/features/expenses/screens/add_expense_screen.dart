@@ -147,8 +147,19 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   Future<void> _applyVoiceResultWithAi(String transcript) async {
     if (transcript.trim().isEmpty) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('No speech detected — try again.')));
+        // Give the user actionable diagnostics instead of just "no speech".
+        final heardAudio = _voice.peakSoundLevel > 0;
+        final locale = _voice.localeId ?? 'unknown';
+        final errMsg = _voice.lastError;
+        final reason = errMsg.isNotEmpty
+            ? errMsg
+            : heardAudio
+                ? 'Heard audio but couldn\'t transcribe (locale: $locale). Try speaking more clearly or check that this locale is downloaded in iOS Settings > General > Keyboard > Dictation.'
+                : 'No audio detected. Check mic permission in Settings > SplitWise.';
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(reason),
+          duration: const Duration(seconds: 6),
+        ));
       }
       return;
     }
