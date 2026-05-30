@@ -187,18 +187,32 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     if (!mounted) return;
     setState(() => _isLoading = false);
 
+    // Always keep the transcript visible so the user can see what was heard.
+    _voiceTranscript = transcript;
+
     if (parsed.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text(parsed.note ?? 'Couldn\'t understand that — try again.'),
+        content: Text(
+            '${parsed.note ?? "Couldn\'t extract expense info"}\nHeard: "$transcript"'),
+        duration: const Duration(seconds: 6),
       ));
+      setState(() {});
       return;
     }
 
+    // Track what the AI actually filled vs left blank so we can tell the user.
+    final filled = <String>[];
+    final missed = <String>[];
+
     if (parsed.amount != null) {
       _amountCtrl.text = parsed.amount!.toStringAsFixed(2);
+      filled.add('amount');
+    } else {
+      missed.add('amount');
     }
     if (parsed.description != null && parsed.description!.isNotEmpty) {
       _descCtrl.text = parsed.description!;
+      filled.add('description');
     }
     if (parsed.currency != null && parsed.currency!.length == 3) {
       _currency = parsed.currency!.toUpperCase();
@@ -208,18 +222,35 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     if (parsed.payerName != null) {
       if (parsed.payerName!.toLowerCase() == 'me') {
         _paidByUserId = currentUser?.id;
+        filled.add('payer (you)');
       } else {
         final match = _findMember(members, parsed.payerName!);
-        if (match != null) _paidByUserId = match.user.id;
+        if (match != null) {
+          _paidByUserId = match.user.id;
+          filled.add('payer (${match.user.displayName})');
+        } else {
+          missed.add('payer "${parsed.payerName}" (not in group)');
+        }
       }
     }
 
     // Resolve participants. Empty list from AI = split with everyone.
     if (parsed.splitWithNames.isNotEmpty) {
       _participantIds.clear();
+      final unmatched = <String>[];
       for (final name in parsed.splitWithNames) {
         final match = _findMember(members, name);
-        if (match != null) _participantIds.add(match.user.id);
+        if (match != null) {
+          _participantIds.add(match.user.id);
+        } else {
+          unmatched.add(name);
+        }
+      }
+      if (_participantIds.isNotEmpty) {
+        filled.add('split (${_participantIds.length} people)');
+      }
+      if (unmatched.isNotEmpty) {
+        missed.add('split with ${unmatched.join(", ")} (not in group)');
       }
     }
 
@@ -233,11 +264,22 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
     setState(() {});
 
+    // Build a useful confirmation that shows what got filled and what didn't.
+    final summary = StringBuffer();
+    if (filled.isNotEmpty) summary.write('Filled: ${filled.join(", ")}.');
+    if (missed.isNotEmpty) {
+      if (summary.isNotEmpty) summary.write(' ');
+      summary.write('Missing: ${missed.join(", ")}.');
+    }
+    if (parsed.note != null && parsed.note!.isNotEmpty) {
+      if (summary.isNotEmpty) summary.write(' ');
+      summary.write(parsed.note!);
+    }
+    if (summary.isEmpty) summary.write('Filled from voice.');
+
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(parsed.note?.isNotEmpty == true
-          ? parsed.note!
-          : 'Filled from voice: "${transcript.length > 60 ? "${transcript.substring(0, 60)}…" : transcript}"'),
-      duration: const Duration(seconds: 4),
+      content: Text('$summary\nHeard: "$transcript"'),
+      duration: const Duration(seconds: 6),
     ));
   }
 

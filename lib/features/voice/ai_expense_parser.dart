@@ -82,22 +82,28 @@ class AiExpenseParser {
           'Claude API key not configured — see lib/core/constants.dart');
     }
 
+    final membersBlock = memberNames.isEmpty
+        ? 'There are no other group members yet — only the speaker.'
+        : 'The group members are: ${memberNames.map((n) => '"$n"').join(', ')}.';
+
     final systemPrompt = '''
-You extract structured expense data from voice transcripts for a bill-splitting app.
+You extract structured expense data from voice transcripts for a bill-splitting app. The transcript was produced by speech-to-text, so it may have typos, missing punctuation, or homophones (e.g. "for" vs "four"). Be tolerant.
 
-The speaker's name is "$speakerName". When they say "I", "me", or "my", they refer to themselves.
+The speaker's name is "$speakerName". When they say "I", "me", "my", "yo", "jo", they refer to themselves — set payerName="me" in that case.
 
-The group members are: ${memberNames.map((n) => '"$n"').join(', ')}.
+$membersBlock
 
-When the user mentions a person, match their words (case-insensitive, partial OK) to one of the group member names above. Use the EXACT member name as it appears in that list. If no match is found, omit that person.
+EXTRACTION RULES:
+- amount: any number in the transcript is almost always the amount. Words like "thirty five", "treinta y cinco", "trenta-cinc" count. Strip currency symbols. If multiple numbers, pick the largest one that sounds like a total.
+- description: a 1-3 word label for what was bought (dinner, groceries, taxi, sopar, comida). Infer it loosely from context. Never null unless transcript is purely numbers.
+- payerName: "me" if the speaker paid (default when unstated, since most expenses are entered by the person who paid). Otherwise the EXACT member name from the list above (case-sensitive match the list).
+- splitWithNames: the people the expense is split between. If the speaker says "split with X and Y", that usually means me+X+Y. If "between X and Y", that means just X+Y. If unstated, leave EMPTY — the app will default to all group members. Only include names that match a group member (case-insensitive partial match against the list, but output the exact list name).
+- splitMode: almost always "equal". Use other modes only with explicit cues ("I owe 30", "Alice pays 60%").
+- currency: $defaultCurrency unless explicitly stated otherwise.
 
-If the user says "split between X and Y" without mentioning themselves, include only X and Y. If they say "split with X and Y" they usually mean themselves + X + Y. If they don't specify who to split with, leave splitWithNames empty (the app defaults to all group members).
+BE LENIENT. If the transcript has ANY hint of an amount, description, or person, extract it. Set isEmpty=true ONLY if the transcript is purely conversational with zero expense info (e.g. "hello", "testing"). Setting isEmpty=true wastes the user's input — when in doubt, fill what you can and leave other fields null.
 
-Default split mode is "equal". Only use "exact"/"shares"/"percentage" if the user clearly specifies non-equal splits.
-
-Default currency is $defaultCurrency unless the user mentions another.
-
-Always call the record_expense tool. Set isEmpty=true only if the transcript contains no useful expense info at all.
+Always call the record_expense tool.
 ''';
 
     final tool = {
@@ -170,6 +176,9 @@ Always call the record_expense tool. Set isEmpty=true only if the transcript con
     });
 
     try {
+      debugPrint('[AiExpenseParser] sending transcript: "$transcript"');
+      debugPrint(
+          '[AiExpenseParser] members: ${memberNames.isEmpty ? "<none>" : memberNames.join(", ")}');
       final response = await http
           .post(
             Uri.parse(_endpoint),
@@ -182,9 +191,23 @@ Always call the record_expense tool. Set isEmpty=true only if the transcript con
           )
           .timeout(const Duration(seconds: 20));
 
+      debugPrint(
+          '[AiExpenseParser] HTTP ${response.statusCode}: ${response.body.length > 600 ? "${response.body.substring(0, 600)}..." : response.body}');
+
+      if (response.statusCode == 401) {
+        return AiParsedExpense.empty(
+            'AI auth failed — check the Claude API key in constants.dart');
+      }
       if (response.statusCode != 200) {
-        debugPrint('[AiExpenseParser] HTTP ${response.statusCode}: ${response.body}');
-        return AiParsedExpense.empty('AI request failed (${response.statusCode})');
+        // Try to surface Claude's actual error message instead of just the code.
+        String detail = '';
+        try {
+          final err = jsonDecode(response.body) as Map<String, dynamic>;
+          final inner = err['error'];
+          if (inner is Map) detail = ': ${inner['message']}';
+        } catch (_) {}
+        return AiParsedExpense.empty(
+            'AI request failed (${response.statusCode})$detail');
       }
 
       final json = jsonDecode(response.body) as Map<String, dynamic>;
