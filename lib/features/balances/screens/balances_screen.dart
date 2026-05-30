@@ -14,10 +14,6 @@ class BalancesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final balancesAsync = ref.watch(groupBalancesProvider(groupId));
-    final membersAsync = ref.watch(groupMembersProvider(groupId));
-    final myId = supabase.auth.currentUser?.id;
-
     return Scaffold(
       backgroundColor: AppTheme.black,
       appBar: AppBar(
@@ -29,7 +25,24 @@ class BalancesScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: balancesAsync.when(
+      body: BalancesView(groupId: groupId),
+    );
+  }
+}
+
+/// Body-only widget so the same content can be embedded as a tab in
+/// GroupDetailScreen without forcing the user through a second tap.
+class BalancesView extends ConsumerWidget {
+  final String groupId;
+  const BalancesView({super.key, required this.groupId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final balancesAsync = ref.watch(groupBalancesProvider(groupId));
+    final membersAsync = ref.watch(groupMembersProvider(groupId));
+    final myId = supabase.auth.currentUser?.id;
+
+    return balancesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.green)),
         error: (e, _) => Center(child: Text('$e')),
         data: (balances) {
@@ -102,7 +115,6 @@ class BalancesScreen extends ConsumerWidget {
             ],
           );
         },
-      ),
     );
   }
 }

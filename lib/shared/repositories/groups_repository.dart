@@ -114,4 +114,17 @@ class GroupsRepository {
         .eq('group_id', groupId)
         .eq('user_id', userId);
   }
+
+  /// Joins a group by its 8-character code. Returns the group ID, or throws
+  /// 'invalid_code' if the code doesn't match any non-personal group.
+  Future<String> joinByCode(String code) async {
+    final normalized = code.trim().toUpperCase();
+    if (normalized.isEmpty) {
+      throw Exception('Empty code');
+    }
+    final result = await supabase
+        .rpc('join_group_by_code', params: {'p_code': normalized});
+    if (result is String) return result;
+    throw Exception('Unexpected response: $result');
+  }
 }

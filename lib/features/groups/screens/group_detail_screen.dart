@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../models/group.dart';
 import '../providers/groups_provider.dart';
+import '../../balances/screens/balances_screen.dart';
+import '../../expenses/screens/expense_list_screen.dart';
 import '../../../core/theme.dart';
 import '../../../shared/widgets/user_avatar.dart';
 
@@ -26,6 +30,120 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
 
   @override
   void dispose() { _tabCtrl.dispose(); super.dispose(); }
+
+  void _shareInviteSheet(ExpenseGroup group) {
+    final code = group.joinCode;
+    if (code == null || code.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('This group has no invite code yet — try refreshing.')));
+      return;
+    }
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppTheme.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                      color: AppTheme.border,
+                      borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text('Invite to ${group.name}',
+                  style: const TextStyle(
+                      color: AppTheme.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              const Text(
+                  'Anyone with this code can join the group. Share it via your favorite app.',
+                  style: TextStyle(
+                      color: AppTheme.textSecondary, fontSize: 13)),
+              const SizedBox(height: 20),
+
+              // Big code display + copy
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 18),
+                decoration: BoxDecoration(
+                  color: AppTheme.greenSubtle,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: AppTheme.green.withValues(alpha: 0.4),
+                      width: 1),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(code,
+                          style: const TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 4)),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.copy_rounded,
+                          color: AppTheme.green),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: code));
+                        ScaffoldMessenger.of(sheetCtx).showSnackBar(
+                            const SnackBar(
+                                content: Text('Code copied'),
+                                duration: Duration(seconds: 2)));
+                      },
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 14),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.green,
+                  foregroundColor: Colors.black,
+                  minimumSize: const Size.fromHeight(50),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.ios_share_rounded),
+                label: const Text('Share invite',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 15)),
+                onPressed: () async {
+                  // share_plus 10.x: static Share.share is still the simplest
+                  // call site and works on iOS, Android, and macOS.
+                  await Share.share(
+                    'Join my SplitWise group "${group.name}" ${group.emoji}\n\n'
+                    'Open SplitWise → tap "Join" → enter code:\n\n'
+                    '$code',
+                    subject: 'Join my SplitWise group',
+                  );
+                },
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(sheetCtx),
+                child: const Text('Done',
+                    style: TextStyle(color: AppTheme.textSecondary)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   void _showAddMemberDialog() {
     final emailCtrl = TextEditingController();
@@ -89,13 +207,19 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
       appBar: AppBar(
         title: Text(headerText),
         actions: [
-          // Personal groups only have one member — hide the "add member" button.
-          if (!isPersonal)
+          // Personal groups only have one member — hide invite + add-member.
+          if (!isPersonal) ...[
+            IconButton(
+              icon: const Icon(Icons.ios_share_rounded),
+              tooltip: 'Share invite',
+              onPressed: group == null ? null : () => _shareInviteSheet(group!),
+            ),
             IconButton(
               icon: const Icon(Icons.person_add_outlined),
               onPressed: _showAddMemberDialog,
-              tooltip: 'Add member',
+              tooltip: 'Add by email',
             ),
+          ],
         ],
         bottom: TabBar(
           controller: _tabCtrl,
@@ -109,20 +233,10 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
       body: TabBarView(
         controller: _tabCtrl,
         children: [
-          // Expenses tab
-          _QuickNavTab(
-            icon: Icons.receipt_long_rounded,
-            label: 'View Expenses',
-            onTap: () => context.push('/groups/${widget.groupId}/expenses'),
-            subtitle: 'See all group expenses',
-          ),
-          // Balances tab
-          _QuickNavTab(
-            icon: Icons.account_balance_wallet_rounded,
-            label: 'View Balances',
-            onTap: () => context.push('/groups/${widget.groupId}/balances'),
-            subtitle: 'See who owes what',
-          ),
+          // Expenses tab — content inlined directly, no intermediate tap.
+          ExpenseListView(groupId: widget.groupId),
+          // Balances tab — same.
+          BalancesView(groupId: widget.groupId),
           // Members tab
           membersAsync.when(
             loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.green)),
@@ -159,66 +273,3 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
   }
 }
 
-class _QuickNavTab extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String subtitle;
-  final VoidCallback onTap;
-  const _QuickNavTab({required this.icon, required this.label,
-      required this.subtitle, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          margin: const EdgeInsets.all(32),
-          padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
-            color: AppTheme.surface,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: AppTheme.border),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 64, height: 64,
-                decoration: BoxDecoration(
-                  color: AppTheme.greenSubtle,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppTheme.green.withOpacity(0.3)),
-                ),
-                child: Icon(icon, color: AppTheme.green, size: 30),
-              ),
-              const SizedBox(height: 16),
-              Text(label, style: const TextStyle(color: AppTheme.textPrimary,
-                  fontWeight: FontWeight.w700, fontSize: 18)),
-              const SizedBox(height: 6),
-              Text(subtitle, style: const TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-              const SizedBox(height: 20),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                decoration: BoxDecoration(
-                  color: AppTheme.greenSubtle,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.green.withOpacity(0.4)),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Open', style: TextStyle(color: AppTheme.green,
-                        fontWeight: FontWeight.w700)),
-                    const SizedBox(width: 6),
-                    const Icon(Icons.arrow_forward_rounded, color: AppTheme.green, size: 16),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

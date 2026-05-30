@@ -38,6 +38,7 @@ dependencies:
   uuid: ^4.4.0
   http: ^1.2.0
   url_launcher: ^6.3.0
+  share_plus: ^10.1.0
 
   # Charts (statistics page)
   fl_chart: ^0.69.0

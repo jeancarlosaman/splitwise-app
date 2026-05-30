@@ -10,6 +10,10 @@ class ExpenseGroup {
   /// surfaced as a special tile.
   final bool isPersonal;
 
+  /// Friendly 8-character code used in invite links. Null for the personal
+  /// group (sharing it makes no sense).
+  final String? joinCode;
+
   const ExpenseGroup({
     required this.id,
     required this.name,
@@ -17,6 +21,7 @@ class ExpenseGroup {
     this.createdBy,
     required this.createdAt,
     this.isPersonal = false,
+    this.joinCode,
   });
 
   factory ExpenseGroup.fromJson(Map<String, dynamic> json) => ExpenseGroup(
@@ -26,5 +31,6 @@ class ExpenseGroup {
         createdBy: json['created_by'] as String?,
         createdAt: DateTime.parse(json['created_at'] as String),
         isPersonal: (json['is_personal'] as bool?) ?? false,
+        joinCode: json['join_code'] as String?,
       );
 }

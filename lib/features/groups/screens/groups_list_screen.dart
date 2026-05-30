@@ -7,6 +7,7 @@ import '../../balances/screens/settle_all_screen.dart';
 import '../../../core/constants.dart';
 import '../../../core/theme.dart';
 import '../../../core/utils/currency_utils.dart';
+import '../../../shared/repositories/groups_repository.dart';
 
 class GroupsListScreen extends ConsumerWidget {
   const GroupsListScreen({super.key});
@@ -165,16 +166,125 @@ class GroupsListScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/groups/create'),
-        backgroundColor: AppTheme.green,
-        foregroundColor: Colors.black,
-        elevation: 0,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('New Group', style: TextStyle(fontWeight: FontWeight.w700)),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Secondary "Join" FAB above the main "New Group" one — surfacing
+          // both actions without burying join in a menu.
+          FloatingActionButton.extended(
+            heroTag: 'joinFab',
+            onPressed: () => _showJoinDialog(context, ref),
+            backgroundColor: AppTheme.surface,
+            foregroundColor: AppTheme.textPrimary,
+            elevation: 0,
+            icon: const Icon(Icons.group_add_rounded),
+            label: const Text('Join',
+                style: TextStyle(fontWeight: FontWeight.w700)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: AppTheme.border, width: 0.5),
+            ),
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton.extended(
+            heroTag: 'createFab',
+            onPressed: () => context.push('/groups/create'),
+            backgroundColor: AppTheme.green,
+            foregroundColor: Colors.black,
+            elevation: 0,
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('New Group',
+                style: TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
       ),
     );
   }
+}
+
+void _showJoinDialog(BuildContext context, WidgetRef ref) {
+  final ctrl = TextEditingController();
+  showDialog<void>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: AppTheme.surface,
+      title: const Text('Join a group',
+          style: TextStyle(color: AppTheme.textPrimary)),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Enter the 8-character code your friend shared:',
+              style: TextStyle(color: AppTheme.textSecondary)),
+          const SizedBox(height: 14),
+          TextField(
+            controller: ctrl,
+            autofocus: true,
+            textCapitalization: TextCapitalization.characters,
+            style: const TextStyle(
+                color: AppTheme.textPrimary,
+                fontWeight: FontWeight.w800,
+                fontSize: 22,
+                letterSpacing: 4),
+            decoration: InputDecoration(
+              hintText: 'ABCD1234',
+              hintStyle: TextStyle(
+                  color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                  letterSpacing: 4),
+              filled: true,
+              fillColor: AppTheme.greenSubtle,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.green, foregroundColor: Colors.black),
+          onPressed: () async {
+            final code = ctrl.text.trim();
+            if (code.length < 4) {
+              ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+                  content: Text('Enter a valid 8-character code')));
+              return;
+            }
+            try {
+              final groupId = await GroupsRepository().joinByCode(code);
+              await ref.read(groupsProvider.notifier).refresh();
+              if (ctx.mounted) {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  backgroundColor: AppTheme.greenSubtle,
+                  content: const Text('Joined! Opening group…',
+                      style: TextStyle(color: AppTheme.textPrimary)),
+                ));
+                // ignore: use_build_context_synchronously
+                context.push('/groups/$groupId');
+              }
+            } catch (e) {
+              if (ctx.mounted) {
+                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                  content: Text(e.toString().contains('invalid_code')
+                      ? 'Invalid code — double-check with your friend'
+                      : 'Couldn\'t join: $e'),
+                ));
+              }
+            }
+          },
+          child: const Text('Join'),
+        ),
+      ],
+    ),
+  );
 }
 
 class _GroupCard extends ConsumerWidget {
