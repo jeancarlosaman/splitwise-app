@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import 'core/theme.dart';
 import 'features/auth/providers/auth_provider.dart';
+import 'features/auth/providers/auth_reset.dart';
 import 'features/auth/screens/login_screen.dart';
 import 'features/auth/screens/register_screen.dart';
 import 'features/groups/screens/groups_list_screen.dart';
@@ -94,6 +95,12 @@ class _AppState extends ConsumerState<App> {
 
   @override
   Widget build(BuildContext context) {
+    // Mount the auth-reset hook for the app's lifetime so user-scoped
+    // providers get invalidated whenever the signed-in user changes.
+    // Doing this in build() means the hook stays alive as long as App is
+    // in the tree (i.e. always, after the first frame).
+    ref.watch(authResetProvider);
+
     return MaterialApp.router(
       title: 'SplitWise',
       theme: AppTheme.light,
