@@ -10,7 +10,7 @@ import '../../groups/models/group_member.dart';
 import '../../ocr/receipt_scanner.dart';
 import '../../ocr/screens/receipt_review_screen.dart';
 import '../../voice/voice_recorder.dart';
-import '../../voice/expense_nlp_parser.dart';
+import '../../voice/ai_expense_parser.dart';
 import '../../../shared/repositories/supabase_client.dart';
 import '../../../shared/repositories/expenses_repository.dart';
 import '../../../shared/widgets/loading_overlay.dart';
@@ -113,52 +113,134 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   // ── Voice flow ────────────────────────────────────────────────────────────
   Future<void> _toggleVoice() async {
     if (_isListening) {
-      await _voice.stopListening();
+      final transcript = await _voice.stopListening();
       setState(() => _isListening = false);
-      _applyVoiceResult(_voiceTranscript);
+      await _applyVoiceResultWithAi(transcript);
     } else {
-      final ok = await _voice.initialize();
+      final ok = await _voice.initialize(
+        onError: (msg) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Mic error: $msg')));
+            setState(() => _isListening = false);
+          }
+        },
+      );
       if (!ok) {
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Speech recognition not available')));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(
+                  'Speech recognition not available. ${_voice.lastError.isNotEmpty ? "(${_voice.lastError})" : "Check mic + speech recognition permissions in iOS Settings."}')));
+        }
         return;
       }
-      setState(() { _isListening = true; _voiceTranscript = ''; });
+      setState(() {
+        _isListening = true;
+        _voiceTranscript = '';
+      });
       await _voice.startListening(
-          onResult: (text) => setState(() => _voiceTranscript = text));
+        onResult: (text, _) => setState(() => _voiceTranscript = text),
+      );
     }
   }
 
-  void _applyVoiceResult(String transcript) {
-    if (transcript.isEmpty) return;
-    final parsed = ExpenseNlpParser.parse(transcript);
-    if (parsed.amount != null) _amountCtrl.text = parsed.amount!.toStringAsFixed(2);
-    if (parsed.description != null && _descCtrl.text.isEmpty) _descCtrl.text = parsed.description!;
-    if (parsed.payerName == 'me') {
-      setState(() => _paidByUserId = supabase.auth.currentUser?.id);
-    } else if (parsed.payerName != null) {
-      final members = ref.read(groupMembersProvider(widget.groupId)).value ?? [];
-      final match = members.where((m) =>
-          m.user.displayName.toLowerCase().contains(parsed.payerName!.toLowerCase()));
-      if (match.isNotEmpty) setState(() => _paidByUserId = match.first.user.id);
-    }
-    if (parsed.splitWithNames.isNotEmpty) {
-      final members = ref.read(groupMembersProvider(widget.groupId)).value ?? [];
-      for (final name in parsed.splitWithNames) {
-        for (final m in members) {
-          if (m.user.displayName.toLowerCase().contains(name.toLowerCase())) {
-            _participantIds.add(m.user.id);
-          }
-        }
+  Future<void> _applyVoiceResultWithAi(String transcript) async {
+    if (transcript.trim().isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No speech detected — try again.')));
       }
-      setState(() {});
+      return;
     }
-    if (mounted && parsed.hasData) {
+
+    setState(() => _isLoading = true);
+    final members = ref.read(groupMembersProvider(widget.groupId)).value ?? [];
+    final currentUser = supabase.auth.currentUser;
+    final speakerName = members
+            .firstWhere(
+              (m) => m.user.id == currentUser?.id,
+              orElse: () => members.isNotEmpty
+                  ? members.first
+                  : throw StateError('no members'),
+            )
+            .user
+            .displayName;
+
+    final parsed = await AiExpenseParser.parse(
+      transcript: transcript,
+      memberNames: members.map((m) => m.user.displayName).toList(),
+      speakerName: speakerName,
+      defaultCurrency: _currency,
+    );
+
+    if (!mounted) return;
+    setState(() => _isLoading = false);
+
+    if (parsed.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('Got it! "${transcript.substring(0, transcript.length.clamp(0, 60))}…"'),
-        duration: const Duration(seconds: 3),
+        content: Text(parsed.note ?? 'Couldn\'t understand that — try again.'),
       ));
+      return;
     }
+
+    if (parsed.amount != null) {
+      _amountCtrl.text = parsed.amount!.toStringAsFixed(2);
+    }
+    if (parsed.description != null && parsed.description!.isNotEmpty) {
+      _descCtrl.text = parsed.description!;
+    }
+    if (parsed.currency != null && parsed.currency!.length == 3) {
+      _currency = parsed.currency!.toUpperCase();
+    }
+
+    // Resolve payer.
+    if (parsed.payerName != null) {
+      if (parsed.payerName!.toLowerCase() == 'me') {
+        _paidByUserId = currentUser?.id;
+      } else {
+        final match = _findMember(members, parsed.payerName!);
+        if (match != null) _paidByUserId = match.user.id;
+      }
+    }
+
+    // Resolve participants. Empty list from AI = split with everyone.
+    if (parsed.splitWithNames.isNotEmpty) {
+      _participantIds.clear();
+      for (final name in parsed.splitWithNames) {
+        final match = _findMember(members, name);
+        if (match != null) _participantIds.add(match.user.id);
+      }
+    }
+
+    if (parsed.splitMode == 'equal' || parsed.splitMode.isEmpty) {
+      _splitType = 'equal';
+    } else {
+      // Non-equal modes aren't wired up to the UI yet — fall back to equal
+      // but warn the user.
+      _splitType = 'equal';
+    }
+
+    setState(() {});
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(parsed.note?.isNotEmpty == true
+          ? parsed.note!
+          : 'Filled from voice: "${transcript.length > 60 ? "${transcript.substring(0, 60)}…" : transcript}"'),
+      duration: const Duration(seconds: 4),
+    ));
+  }
+
+  GroupMember? _findMember(List<GroupMember> members, String spokenName) {
+    final needle = spokenName.toLowerCase().trim();
+    if (needle.isEmpty) return null;
+    // Exact match first, then contains.
+    for (final m in members) {
+      if (m.user.displayName.toLowerCase() == needle) return m;
+    }
+    for (final m in members) {
+      if (m.user.displayName.toLowerCase().contains(needle)) return m;
+    }
+    return null;
   }
 
   // ── Submit ────────────────────────────────────────────────────────────────
