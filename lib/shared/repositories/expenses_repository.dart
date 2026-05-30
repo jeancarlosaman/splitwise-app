@@ -90,6 +90,27 @@ class ExpensesRepository {
     await supabase.from('expenses').delete().eq('id', expenseId);
   }
 
+  /// Returns the current user's total spending (their share of each expense)
+  /// grouped by group ID. Used by the stats screen.
+  Future<Map<String, double>> getUserSpendingByGroup() async {
+    final userId = supabase.auth.currentUser!.id;
+
+    // Join expense_participants -> expenses to get group_id alongside the share.
+    final data = await supabase
+        .from('expense_participants')
+        .select('share_amount, expenses!inner(group_id)')
+        .eq('user_id', userId);
+
+    final result = <String, double>{};
+    for (final row in data as List) {
+      final share = (row['share_amount'] as num).toDouble();
+      final groupId =
+          (row['expenses'] as Map<String, dynamic>)['group_id'] as String;
+      result[groupId] = (result[groupId] ?? 0) + share;
+    }
+    return result;
+  }
+
   /// Returns net balance per userId for the group.
   /// Positive = owed money, Negative = owes money.
   Future<Map<String, double>> computeBalances(String groupId) async {

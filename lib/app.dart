@@ -14,6 +14,7 @@ import 'features/expenses/screens/add_expense_screen.dart';
 import 'features/expenses/screens/expense_detail_screen.dart';
 import 'features/expenses/screens/edit_expense_screen.dart';
 import 'features/balances/screens/balances_screen.dart';
+import 'features/stats/screens/stats_screen.dart';
 import 'shared/repositories/supabase_client.dart';
 
 class App extends ConsumerStatefulWidget {
@@ -82,6 +83,7 @@ class _AppState extends ConsumerState<App> {
           builder: (_, state) =>
               BalancesScreen(groupId: state.pathParameters['groupId']!),
         ),
+        GoRoute(path: '/stats', builder: (_, __) => const StatsScreen()),
       ],
     );
   }

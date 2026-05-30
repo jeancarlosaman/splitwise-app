@@ -14,6 +14,22 @@ final groupsProvider =
   GroupsNotifier.new,
 );
 
+/// Only the user's auto-created Personal group. Surfaced separately so it
+/// doesn't clutter the main groups list.
+final personalGroupProvider =
+    FutureProvider<ExpenseGroup>((ref) async {
+  return ref.read(groupsRepositoryProvider).getOrCreatePersonalGroup();
+});
+
+/// All groups EXCEPT the personal one — what to show in the main list.
+final sharedGroupsProvider =
+    Provider<List<ExpenseGroup>>((ref) {
+  return ref.watch(groupsProvider).maybeWhen(
+        data: (groups) => groups.where((g) => !g.isPersonal).toList(),
+        orElse: () => const [],
+      );
+});
+
 class GroupsNotifier extends AsyncNotifier<List<ExpenseGroup>> {
   @override
   Future<List<ExpenseGroup>> build() async {

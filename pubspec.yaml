@@ -38,6 +38,9 @@ dependencies:
   uuid: ^4.4.0
   http: ^1.2.0
 
+  # Charts (statistics page)
+  fl_chart: ^0.69.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

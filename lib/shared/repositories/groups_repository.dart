@@ -28,11 +28,17 @@ class GroupsRepository {
   Future<ExpenseGroup> createGroup({
     required String name,
     required String emoji,
+    bool isPersonal = false,
   }) async {
     final userId = supabase.auth.currentUser!.id;
     final data = await supabase
         .from('expense_groups')
-        .insert({'name': name, 'emoji': emoji, 'created_by': userId})
+        .insert({
+          'name': name,
+          'emoji': emoji,
+          'created_by': userId,
+          'is_personal': isPersonal,
+        })
         .select()
         .single();
 
@@ -45,6 +51,22 @@ class GroupsRepository {
     });
 
     return group;
+  }
+
+  /// Returns the user's auto-created personal group, creating it on first call.
+  Future<ExpenseGroup> getOrCreatePersonalGroup() async {
+    final userId = supabase.auth.currentUser!.id;
+    final existing = await supabase
+        .from('expense_groups')
+        .select()
+        .eq('created_by', userId)
+        .eq('is_personal', true)
+        .maybeSingle();
+
+    if (existing != null) {
+      return ExpenseGroup.fromJson(existing);
+    }
+    return createGroup(name: 'Personal', emoji: '👤', isPersonal: true);
   }
 
   Future<List<GroupMember>> getGroupMembers(String groupId) async {
