@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/balances_provider.dart';
+import '../settle_flow.dart';
 import '../../groups/providers/groups_provider.dart';
-import '../../expenses/providers/expenses_provider.dart';
-import '../../../core/constants.dart';
 import '../../../core/utils/currency_utils.dart';
 import '../../../core/theme.dart';
 import '../../../shared/repositories/supabase_client.dart';
@@ -86,7 +85,7 @@ class BalancesScreen extends ConsumerWidget {
                     to: toLabel,
                     amount: payment.amount,
                     canSettle: canSettle,
-                    onSettle: () => _confirmSettle(
+                    onSettle: () => showSettleSheet(
                       context: context,
                       ref: ref,
                       groupId: groupId,
@@ -105,72 +104,6 @@ class BalancesScreen extends ConsumerWidget {
         },
       ),
     );
-  }
-}
-
-Future<void> _confirmSettle({
-  required BuildContext context,
-  required WidgetRef ref,
-  required String groupId,
-  required String fromUserId,
-  required String toUserId,
-  required String fromName,
-  required String toName,
-  required double amount,
-}) async {
-  final confirmed = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      backgroundColor: AppTheme.surface,
-      title: const Text('Mark as paid?',
-          style: TextStyle(color: AppTheme.textPrimary)),
-      content: Text(
-        'Record that $fromName paid $toName ${CurrencyUtils.format(amount)}? '
-        'This will zero out the debt.',
-        style: const TextStyle(color: AppTheme.textSecondary),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx, false),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.green, foregroundColor: Colors.black),
-          onPressed: () => Navigator.pop(ctx, true),
-          child: const Text('Mark Paid'),
-        ),
-      ],
-    ),
-  );
-  if (confirmed != true) return;
-
-  try {
-    final repo = ref.read(expensesRepositoryProvider);
-    await repo.recordSettlement(
-      groupId: groupId,
-      fromUserId: fromUserId,
-      toUserId: toUserId,
-      amount: amount,
-      currency: AppConstants.defaultCurrency,
-      fromName: fromName,
-      toName: toName,
-    );
-    // Refresh balances + the expenses list so the new settlement shows up.
-    ref.invalidate(groupBalancesProvider(groupId));
-    ref.invalidate(groupExpensesProvider(groupId));
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        backgroundColor: AppTheme.greenSubtle,
-        content: Text('Marked $fromName → $toName as paid',
-            style: const TextStyle(color: AppTheme.textPrimary)),
-      ));
-    }
-  } catch (e) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Settlement failed: $e')));
-    }
   }
 }
 

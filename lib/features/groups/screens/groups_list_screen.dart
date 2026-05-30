@@ -60,9 +60,10 @@ class GroupsListScreen extends ConsumerWidget {
                       tooltip: 'Statistics',
                     ),
                     IconButton(
-                      icon: const Icon(Icons.logout_rounded, color: AppTheme.textSecondary),
-                      onPressed: () => ref.read(authNotifierProvider.notifier).signOut(),
-                      tooltip: 'Sign out',
+                      icon: const Icon(Icons.person_rounded,
+                          color: AppTheme.textSecondary),
+                      onPressed: () => context.push('/profile'),
+                      tooltip: 'Profile',
                     ),
                   ],
                 ),
