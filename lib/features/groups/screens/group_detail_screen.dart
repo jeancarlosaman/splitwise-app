@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/group.dart';
 import '../providers/groups_provider.dart';
 import '../../../core/theme.dart';
 import '../../../shared/widgets/user_avatar.dart';
@@ -65,18 +66,36 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
   Widget build(BuildContext context) {
     final groupsAsync = ref.watch(groupsProvider);
     final membersAsync = ref.watch(groupMembersProvider(widget.groupId));
-    final group = groupsAsync.value?.firstWhere(
-        (g) => g.id == widget.groupId, orElse: () => throw '');
+
+    // Find the group in the cached list, but DON'T throw if it's missing —
+    // that produces a white screen when the personal group was just auto-created
+    // and the groupsProvider cache hasn't refreshed yet. Show a sensible
+    // fallback header instead.
+    final allGroups = groupsAsync.value ?? const [];
+    ExpenseGroup? group;
+    for (final g in allGroups) {
+      if (g.id == widget.groupId) {
+        group = g;
+        break;
+      }
+    }
+    final isPersonal = group?.isPersonal ?? false;
+    final headerText = group != null
+        ? (isPersonal ? '👤  My Expenses' : '${group.emoji}  ${group.name}')
+        : (groupsAsync.isLoading ? 'Loading…' : 'Group');
 
     return Scaffold(
       backgroundColor: AppTheme.black,
       appBar: AppBar(
-        title: Text(group != null ? '${group.emoji}  ${group.name}' : 'Group'),
+        title: Text(headerText),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add_outlined),
-            onPressed: _showAddMemberDialog, tooltip: 'Add member',
-          ),
+          // Personal groups only have one member — hide the "add member" button.
+          if (!isPersonal)
+            IconButton(
+              icon: const Icon(Icons.person_add_outlined),
+              onPressed: _showAddMemberDialog,
+              tooltip: 'Add member',
+            ),
         ],
         bottom: TabBar(
           controller: _tabCtrl,

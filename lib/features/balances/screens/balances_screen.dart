@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/balances_provider.dart';
 import '../../groups/providers/groups_provider.dart';
+import '../../expenses/providers/expenses_provider.dart';
+import '../../../core/constants.dart';
 import '../../../core/utils/currency_utils.dart';
 import '../../../core/theme.dart';
 import '../../../shared/repositories/supabase_client.dart';
@@ -73,8 +75,28 @@ class BalancesScreen extends ConsumerWidget {
                 ...balances.settlements.map((payment) {
                   final fromLabel = nameFor(payment.from);
                   final toLabel = nameFor(payment.to);
+                  // Only the debtor (or the creditor) should be allowed to
+                  // mark a settlement as paid — anyone else marking it would
+                  // be confusing. Show the button only when the current user
+                  // is one of the two parties.
+                  final canSettle =
+                      myId == payment.from || myId == payment.to;
                   return _SettlementCard(
-                    from: fromLabel, to: toLabel, amount: payment.amount);
+                    from: fromLabel,
+                    to: toLabel,
+                    amount: payment.amount,
+                    canSettle: canSettle,
+                    onSettle: () => _confirmSettle(
+                      context: context,
+                      ref: ref,
+                      groupId: groupId,
+                      fromUserId: payment.from,
+                      toUserId: payment.to,
+                      fromName: fromLabel,
+                      toName: toLabel,
+                      amount: payment.amount,
+                    ),
+                  );
                 }),
 
               const SizedBox(height: 32),
@@ -83,6 +105,72 @@ class BalancesScreen extends ConsumerWidget {
         },
       ),
     );
+  }
+}
+
+Future<void> _confirmSettle({
+  required BuildContext context,
+  required WidgetRef ref,
+  required String groupId,
+  required String fromUserId,
+  required String toUserId,
+  required String fromName,
+  required String toName,
+  required double amount,
+}) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: AppTheme.surface,
+      title: const Text('Mark as paid?',
+          style: TextStyle(color: AppTheme.textPrimary)),
+      content: Text(
+        'Record that $fromName paid $toName ${CurrencyUtils.format(amount)}? '
+        'This will zero out the debt.',
+        style: const TextStyle(color: AppTheme.textSecondary),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx, false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.green, foregroundColor: Colors.black),
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Mark Paid'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true) return;
+
+  try {
+    final repo = ref.read(expensesRepositoryProvider);
+    await repo.recordSettlement(
+      groupId: groupId,
+      fromUserId: fromUserId,
+      toUserId: toUserId,
+      amount: amount,
+      currency: AppConstants.defaultCurrency,
+      fromName: fromName,
+      toName: toName,
+    );
+    // Refresh balances + the expenses list so the new settlement shows up.
+    ref.invalidate(groupBalancesProvider(groupId));
+    ref.invalidate(groupExpensesProvider(groupId));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        backgroundColor: AppTheme.greenSubtle,
+        content: Text('Marked $fromName → $toName as paid',
+            style: const TextStyle(color: AppTheme.textPrimary)),
+      ));
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Settlement failed: $e')));
+    }
   }
 }
 
@@ -177,36 +265,83 @@ class _BalanceCard extends StatelessWidget {
 class _SettlementCard extends StatelessWidget {
   final String from, to;
   final double amount;
-  const _SettlementCard({required this.from, required this.to, required this.amount});
+  final bool canSettle;
+  final VoidCallback onSettle;
+  const _SettlementCard({
+    required this.from,
+    required this.to,
+    required this.amount,
+    required this.canSettle,
+    required this.onSettle,
+  });
 
   @override
   Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 8),
-    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-    decoration: BoxDecoration(
-      color: AppTheme.surface, borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: AppTheme.border, width: 0.5),
-    ),
-    child: Row(
-      children: [
-        const Icon(Icons.send_rounded, color: AppTheme.amber, size: 20),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Text.rich(
-            TextSpan(children: [
-              TextSpan(text: from,
-                  style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
-              const TextSpan(text: ' pays ',
-                  style: TextStyle(color: AppTheme.textSecondary)),
-              TextSpan(text: to,
-                  style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600)),
-            ]),
-          ),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.border, width: 0.5),
         ),
-        Text(CurrencyUtils.format(amount),
-            style: const TextStyle(color: AppTheme.textPrimary,
-                fontWeight: FontWeight.w700, fontSize: 15)),
-      ],
-    ),
-  );
+        child: Row(
+          children: [
+            const Icon(Icons.send_rounded, color: AppTheme.amber, size: 20),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text.rich(
+                TextSpan(children: [
+                  TextSpan(
+                      text: from,
+                      style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.w600)),
+                  const TextSpan(
+                      text: ' pays ',
+                      style: TextStyle(color: AppTheme.textSecondary)),
+                  TextSpan(
+                      text: to,
+                      style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.w600)),
+                ]),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(CurrencyUtils.format(amount),
+                style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15)),
+            if (canSettle) ...[
+              const SizedBox(width: 10),
+              Material(
+                color: AppTheme.green,
+                borderRadius: BorderRadius.circular(10),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: onSettle,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(Icons.check_rounded,
+                            color: Colors.black, size: 16),
+                        SizedBox(width: 4),
+                        Text('Paid',
+                            style: TextStyle(
+                                color: Colors.black,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
 }

@@ -90,6 +90,39 @@ class ExpensesRepository {
     await supabase.from('expenses').delete().eq('id', expenseId);
   }
 
+  /// Records a payment from one user to another. Implemented as a regular
+  /// expense (paid_by = debtor, single participant = creditor) so it flows
+  /// through the existing balance computation and zeros out the debt.
+  ///
+  /// The description uses a "Settled:" prefix so we can later style these
+  /// distinctly in the expenses list.
+  Future<void> recordSettlement({
+    required String groupId,
+    required String fromUserId,
+    required String toUserId,
+    required double amount,
+    required String currency,
+    required String fromName,
+    required String toName,
+  }) async {
+    final expense = await createExpense(
+      groupId: groupId,
+      description: 'Settled: $fromName → $toName',
+      amount: amount,
+      currency: currency,
+      paidBy: fromUserId,
+      splitType: 'equal',
+    );
+    await addParticipants(expense.id, [
+      ExpenseParticipant(
+        id: '',
+        expenseId: expense.id,
+        userId: toUserId,
+        shareAmount: amount,
+      ),
+    ]);
+  }
+
   /// Returns the current user's total spending (their share of each expense)
   /// grouped by group ID. Used by the stats screen.
   Future<Map<String, double>> getUserSpendingByGroup() async {

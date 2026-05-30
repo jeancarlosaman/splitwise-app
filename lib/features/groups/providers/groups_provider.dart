@@ -16,9 +16,27 @@ final groupsProvider =
 
 /// Only the user's auto-created Personal group. Surfaced separately so it
 /// doesn't clutter the main groups list.
+///
+/// If we had to CREATE the group (first run), also refresh `groupsProvider`
+/// so the personal group ID is in the cached list when the user taps it.
+/// Without this, the GroupDetailScreen renders blank because `firstWhere`
+/// can't find the just-created group.
 final personalGroupProvider =
     FutureProvider<ExpenseGroup>((ref) async {
-  return ref.read(groupsRepositoryProvider).getOrCreatePersonalGroup();
+  final repo = ref.read(groupsRepositoryProvider);
+
+  // Cheap check: see what's already in the cache before going to the network.
+  final cached = ref.read(groupsProvider).value;
+  final cachedPersonal = cached?.where((g) => g.isPersonal).cast<ExpenseGroup?>().firstWhere(
+        (g) => g != null,
+        orElse: () => null,
+      );
+  if (cachedPersonal != null) return cachedPersonal;
+
+  final group = await repo.getOrCreatePersonalGroup();
+  // Make sure the full groups list reflects this new group.
+  Future.microtask(() => ref.read(groupsProvider.notifier).refresh());
+  return group;
 });
 
 /// All groups EXCEPT the personal one — what to show in the main list.
