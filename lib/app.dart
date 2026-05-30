@@ -14,6 +14,7 @@ import 'features/expenses/screens/add_expense_screen.dart';
 import 'features/expenses/screens/expense_detail_screen.dart';
 import 'features/expenses/screens/edit_expense_screen.dart';
 import 'features/balances/screens/balances_screen.dart';
+import 'features/balances/screens/settle_all_screen.dart';
 import 'features/stats/screens/stats_screen.dart';
 import 'features/profile/screens/profile_screen.dart';
 import 'shared/repositories/supabase_client.dart';
@@ -86,6 +87,7 @@ class _AppState extends ConsumerState<App> {
         ),
         GoRoute(path: '/stats', builder: (_, __) => const StatsScreen()),
         GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
+        GoRoute(path: '/settle', builder: (_, __) => const SettleAllScreen()),
       ],
     );
   }

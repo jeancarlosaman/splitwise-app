@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/groups_provider.dart';
-import '../../../features/auth/providers/auth_provider.dart';
+import '../../balances/screens/settle_all_screen.dart';
+import '../../../core/constants.dart';
 import '../../../core/theme.dart';
+import '../../../core/utils/currency_utils.dart';
 
 class GroupsListScreen extends ConsumerWidget {
   const GroupsListScreen({super.key});
@@ -14,6 +16,7 @@ class GroupsListScreen extends ConsumerWidget {
     final groupsAsync = ref.watch(groupsProvider);
     final personalAsync = ref.watch(personalGroupProvider);
     final sharedGroups = ref.watch(sharedGroupsProvider);
+    final settlementsAsync = ref.watch(allSettlementsProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.black,
@@ -68,6 +71,32 @@ class GroupsListScreen extends ConsumerWidget {
                   ],
                 ),
               ),
+            ),
+          ),
+
+          // "Things to settle" banner — only shows when there are outstanding
+          // payments involving the current user.
+          SliverToBoxAdapter(
+            child: settlementsAsync.maybeWhen(
+              data: (entries) {
+                if (entries.isEmpty) return const SizedBox.shrink();
+                final youOweTotal = entries
+                    .where((e) => e.youOwe)
+                    .fold<double>(0, (s, e) => s + e.amount);
+                final owedToYouTotal = entries
+                    .where((e) => !e.youOwe)
+                    .fold<double>(0, (s, e) => s + e.amount);
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                  child: _SettleBanner(
+                    count: entries.length,
+                    youOweTotal: youOweTotal,
+                    owedToYouTotal: owedToYouTotal,
+                    onTap: () => context.push('/settle'),
+                  ),
+                );
+              },
+              orElse: () => const SizedBox.shrink(),
             ),
           ),
 
@@ -196,6 +225,142 @@ class _GroupCard extends ConsumerWidget {
                 const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SettleBanner extends StatelessWidget {
+  final int count;
+  final double youOweTotal;
+  final double owedToYouTotal;
+  final VoidCallback onTap;
+
+  const _SettleBanner({
+    required this.count,
+    required this.youOweTotal,
+    required this.owedToYouTotal,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final youOwe = youOweTotal > 0;
+    final owedToYou = owedToYouTotal > 0;
+    // Color the banner red if the user has unpaid debts (more urgent),
+    // otherwise green for "money coming your way".
+    final accent = youOwe ? AppTheme.negative : AppTheme.positive;
+
+    return Material(
+      color: AppTheme.surface,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: accent.withValues(alpha: 0.4), width: 1),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(Icons.swap_horiz_rounded,
+                    color: accent, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Things to settle',
+                      style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16),
+                    ),
+                    const SizedBox(height: 2),
+                    Text.rich(
+                      TextSpan(children: [
+                        if (youOwe) ...[
+                          const TextSpan(
+                            text: 'you owe ',
+                            style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 13),
+                          ),
+                          TextSpan(
+                            text: CurrencyUtils.format(youOweTotal,
+                                currency: AppConstants.defaultCurrency),
+                            style: const TextStyle(
+                                color: AppTheme.negative,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13),
+                          ),
+                        ],
+                        if (youOwe && owedToYou)
+                          const TextSpan(
+                              text: '  ·  ',
+                              style: TextStyle(
+                                  color: AppTheme.textSecondary,
+                                  fontSize: 13)),
+                        if (owedToYou) ...[
+                          TextSpan(
+                            text: CurrencyUtils.format(owedToYouTotal,
+                                currency: AppConstants.defaultCurrency),
+                            style: const TextStyle(
+                                color: AppTheme.positive,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 13),
+                          ),
+                          const TextSpan(
+                            text: ' owed to you',
+                            style: TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 13),
+                          ),
+                        ],
+                      ]),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$count',
+                      style: TextStyle(
+                          color: accent,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.chevron_right_rounded,
+                        color: accent, size: 18),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
