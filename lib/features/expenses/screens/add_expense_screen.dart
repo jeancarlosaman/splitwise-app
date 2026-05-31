@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/expenses_provider.dart';
+import '../models/expense_category.dart';
 import '../models/expense_participant.dart';
 import '../models/receipt_item.dart';
 import '../../groups/providers/groups_provider.dart';
@@ -41,6 +42,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final Set<String> _participantIds = {};
   List<ReceiptItem> _receiptItems = [];
   bool _isLoading = false;
+
+  /// Selected category — only shown in the form for personal expenses.
+  /// Defaults to `other` so the user can save without picking one.
+  ExpenseCategory _category = ExpenseCategory.other;
 
   /// Per-participant amount entries used when _splitType == 'by_amount'.
   /// Keyed by userId — value is the raw text the user typed (we parse on submit).
@@ -396,6 +401,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
         currency: _currency,
         paidBy: _paidByUserId!,
         splitType: _splitType,
+        // Only persist a category for personal expenses — shared expenses
+        // don't surface it in the UI (yet), so leaving the column null
+        // keeps the data clean.
+        category: _isPersonalGroup(ref) ? _category.code : null,
       );
 
       final List<ExpenseParticipant> participants;
@@ -636,6 +645,20 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             ),
             const SizedBox(height: 20),
 
+            // ── Category (personal only) ─────────────────────
+            // Shared expenses don't surface a category in the UI yet, so we
+            // only show this picker for personal logging — feeds the
+            // Categories tab in the personal group.
+            if (_isPersonalGroup(ref)) ...[
+              _SectionLabel(label: 'Category'),
+              const SizedBox(height: 10),
+              _CategoryPicker(
+                value: _category,
+                onChanged: (c) => setState(() => _category = c),
+              ),
+              const SizedBox(height: 24),
+            ],
+
             // For personal groups (only the user is a member), "who paid",
             // "split type" and "split with" are meaningless — hide them and
             // submit silently with paid_by = me / participant = me.
@@ -766,6 +789,60 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Category picker (personal expenses) ───────────────────────────────────
+class _CategoryPicker extends StatelessWidget {
+  final ExpenseCategory value;
+  final ValueChanged<ExpenseCategory> onChanged;
+  const _CategoryPicker({required this.value, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: ExpenseCategory.values.map((c) {
+        final selected = c == value;
+        return Material(
+          color: selected
+              ? c.color.withValues(alpha: 0.18)
+              : AppTheme.surface,
+          borderRadius: BorderRadius.circular(12),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => onChanged(c),
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                    color: selected
+                        ? c.color.withValues(alpha: 0.6)
+                        : AppTheme.border,
+                    width: 1),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(c.emoji, style: const TextStyle(fontSize: 16)),
+                  const SizedBox(width: 8),
+                  Text(c.label,
+                      style: TextStyle(
+                          color: selected
+                              ? AppTheme.textPrimary
+                              : AppTheme.textSecondary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13)),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 }

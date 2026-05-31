@@ -22,6 +22,7 @@ class ExpensesRepository {
     required String paidBy,
     required String splitType,
     String? receiptUrl,
+    String? category,
   }) async {
     final userId = supabase.auth.currentUser!.id;
     final data = await supabase
@@ -35,6 +36,7 @@ class ExpensesRepository {
           'created_by': userId,
           'split_type': splitType,
           if (receiptUrl != null) 'receipt_url': receiptUrl,
+          if (category != null) 'category': category,
         })
         .select()
         .single();

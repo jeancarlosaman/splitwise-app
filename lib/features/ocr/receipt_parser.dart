@@ -127,6 +127,11 @@ class ReceiptParser {
     double? total;
     final items = <ReceiptItem>[];
 
+    // Track which line each item was extracted from, plus the source line
+    // we used as its name. If an item ends up as the "Item" fallback, the
+    // post-pass below tries to assign it the closest unused name candidate.
+    final itemSourceLines = <int>[];
+
     // Merchant: first non-empty line that has no price and is reasonably short.
     // Allow accented chars (à, ñ, ü, etc.) since merchant names commonly include them.
     for (final line in lines) {
@@ -200,6 +205,61 @@ class ReceiptParser {
           (e.price - price).abs() < 0.01);
       if (!alreadyAdded) {
         items.add(ReceiptItem(name: name, price: price));
+        itemSourceLines.add(i);
+      }
+    }
+
+    // ── Post-pass: rescue "Item" fallbacks by pairing them with unused
+    //              text lines in document order. Catches column layouts
+    //              where ALL names are at the top and ALL prices are at
+    //              the bottom of the receipt. ─────────────────────────
+    if (items.any((e) => e.name == 'Item')) {
+      final usedAsName = <String>{
+        for (final e in items)
+          if (e.name != 'Item') e.name.toLowerCase(),
+        if (merchant != null) merchant.toLowerCase(),
+      };
+      final nameCandidates = <_NameCandidate>[];
+      for (int j = 0; j < lines.length; j++) {
+        final ln = lines[j];
+        if (_pricePattern.hasMatch(ln)) continue;
+        if (_skipPattern.hasMatch(ln)) continue;
+        if (_isNoisyMetadata.hasMatch(ln)) continue;
+        if (_isJustQty(ln)) continue;
+        if (ln.length < 2 || ln.length > 50) continue;
+        final cleaned = _cleanItemName(ln);
+        if (cleaned.length < 2) continue;
+        if (usedAsName.contains(cleaned.toLowerCase())) continue;
+        nameCandidates.add(_NameCandidate(lineIndex: j, name: cleaned));
+      }
+      debugPrint(
+          '[ReceiptParser] post-pass: ${nameCandidates.length} unused name candidates');
+
+      // For each "Item" fallback, take the closest preceding unused candidate.
+      for (int k = 0; k < items.length; k++) {
+        if (items[k].name != 'Item') continue;
+        final priceLine = itemSourceLines[k];
+        _NameCandidate? best;
+        int bestDistance = 9999;
+        for (final c in nameCandidates) {
+          if (c.used) continue;
+          if (c.lineIndex > priceLine + 2) continue; // not too far after
+          final dist = (priceLine - c.lineIndex).abs();
+          // Prefer preceding (lower line index than priceLine).
+          final isPreceding = c.lineIndex < priceLine;
+          if (best == null ||
+              dist < bestDistance ||
+              (isPreceding && dist == bestDistance)) {
+            best = c;
+            bestDistance = dist;
+          }
+        }
+        if (best != null) {
+          best.used = true;
+          items[k] = ReceiptItem(name: best.name, price: items[k].price);
+          debugPrint(
+              '[ReceiptParser] rescued item #$k -> "${best.name}" (from line ${best.lineIndex}, price was on line $priceLine)');
+        }
       }
     }
 
@@ -296,4 +356,15 @@ class ReceiptParser {
     }
     return double.tryParse(normalized);
   }
+}
+
+/// Mutable record used by the post-pass to track which text lines have
+/// already been claimed as an item name (so two prices don't pick up the
+/// same name).
+class _NameCandidate {
+  final int lineIndex;
+  final String name;
+  bool used;
+  _NameCandidate({required this.lineIndex, required this.name})
+      : used = false;
 }

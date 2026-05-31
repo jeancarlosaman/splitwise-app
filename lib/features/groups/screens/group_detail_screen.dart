@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../models/group.dart';
 import '../providers/groups_provider.dart';
 import '../../balances/screens/balances_screen.dart';
+import '../../expenses/screens/category_breakdown_view.dart';
 import '../../expenses/screens/expense_list_screen.dart';
 import '../../../core/theme.dart';
 import '../../../shared/widgets/user_avatar.dart';
@@ -223,10 +224,13 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
         ],
         bottom: TabBar(
           controller: _tabCtrl,
-          tabs: const [
-            Tab(text: 'Expenses'),
-            Tab(text: 'Balances'),
-            Tab(text: 'Members'),
+          tabs: [
+            const Tab(text: 'Expenses'),
+            // Personal groups don't have balances (you can't owe yourself) —
+            // show a Categories breakdown instead, which is what actually
+            // matters for solo spending.
+            Tab(text: isPersonal ? 'Categories' : 'Balances'),
+            const Tab(text: 'Members'),
           ],
         ),
       ),
@@ -235,8 +239,10 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen>
         children: [
           // Expenses tab — content inlined directly, no intermediate tap.
           ExpenseListView(groupId: widget.groupId),
-          // Balances tab — same.
-          BalancesView(groupId: widget.groupId),
+          // Personal: spending-by-category. Shared: who-owes-whom.
+          isPersonal
+              ? CategoryBreakdownView(groupId: widget.groupId)
+              : BalancesView(groupId: widget.groupId),
           // Members tab
           membersAsync.when(
             loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.green)),

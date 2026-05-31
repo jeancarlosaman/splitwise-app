@@ -48,6 +48,41 @@ class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
 
   int get _selectedCount => _included.where((v) => v).length;
 
+  /// Inline rename for items whose OCR'd name came out as "Item" or wrong.
+  /// Opens a small dialog with the current name pre-filled.
+  Future<void> _renameItem(int idx) async {
+    final ctrl = TextEditingController(text: _items[idx].name);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppTheme.ink,
+        title: const Text('Rename item',
+            style: TextStyle(color: AppTheme.textPrimary)),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          style: const TextStyle(color: AppTheme.textPrimary),
+          decoration: const InputDecoration(
+              hintText: 'Item name', prefixIcon: Icon(Icons.label_outline)),
+          onSubmitted: (v) => Navigator.pop(ctx, v),
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.pop(ctx, ctrl.text),
+              child: const Text('Save')),
+        ],
+      ),
+    );
+    if (result != null && result.trim().isNotEmpty && mounted) {
+      setState(() {
+        _items[idx] = _items[idx].copyWith(name: result.trim());
+      });
+    }
+  }
+
   void _toggleMember(int idx, String userId) {
     setState(() {
       final current = List<String>.from(_items[idx].assignedTo);
@@ -317,20 +352,43 @@ class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
                               ),
                             ),
                             const SizedBox(width: 14),
-                            // Name + assignees
+                            // Name (tap to rename) + assignees
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    item.name,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w600, fontSize: 15,
-                                      color: included
-                                          ? AppTheme.textPrimary
-                                          : AppTheme.textSecondary,
-                                      decoration: included ? null : TextDecoration.lineThrough,
-                                      decorationColor: AppTheme.textSecondary,
+                                  GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: included
+                                        ? () => _renameItem(i)
+                                        : null,
+                                    child: Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            item.name,
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 15,
+                                              color: included
+                                                  ? AppTheme.textPrimary
+                                                  : AppTheme.textSecondary,
+                                              decoration: included
+                                                  ? null
+                                                  : TextDecoration.lineThrough,
+                                              decorationColor:
+                                                  AppTheme.textSecondary,
+                                            ),
+                                          ),
+                                        ),
+                                        if (included) ...[
+                                          const SizedBox(width: 6),
+                                          Icon(Icons.edit_rounded,
+                                              size: 13,
+                                              color: AppTheme.textSecondary
+                                                  .withValues(alpha: 0.5)),
+                                        ],
+                                      ],
                                     ),
                                   ),
                                   if (included && assignedNames.isNotEmpty) ...[

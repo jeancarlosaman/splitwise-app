@@ -9,6 +9,11 @@ class Expense {
   final String? createdBy;
   final String splitType;
   final String? receiptUrl;
+
+  /// Free-text category code (matches `ExpenseCategory.code` if known).
+  /// Optional — null for legacy expenses or expenses logged without picking.
+  final String? category;
+
   final DateTime createdAt;
 
   const Expense({
@@ -22,6 +27,7 @@ class Expense {
     this.createdBy,
     required this.splitType,
     this.receiptUrl,
+    this.category,
     required this.createdAt,
   });
 
@@ -38,6 +44,7 @@ class Expense {
       createdBy: json['created_by'] as String?,
       splitType: (json['split_type'] as String?) ?? 'equal',
       receiptUrl: json['receipt_url'] as String?,
+      category: json['category'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
