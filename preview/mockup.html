@@ -131,10 +131,12 @@ body {
   width: 30px;
   height: 30px;
   border-radius: 9px;
-  background: linear-gradient(135deg, var(--mintBright), var(--mintDeep));
+  background: #0A1F18;
+  overflow: hidden;
   display: flex; align-items: center; justify-content: center;
-  font-weight: 900; font-size: 16px; color: #052E1F;
+  position: relative;
 }
+.logo-mini svg { width: 100%; height: 100%; display: block; }
 .app-name {
   font-weight: 800;
   font-size: 18px;
@@ -547,7 +549,12 @@ body {
       </div>
 
       <div class="app-bar">
-        <div class="logo-mini">S</div>
+        <div class="logo-mini">
+          <svg viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet">
+            <rect width="200" height="200" fill="#0A1F18"/>
+            <path d="M 200 0 L 110 0 L 75 90 L 125 90 L 50 200 L 200 200 Z" fill="#34D399"/>
+          </svg>
+        </div>
         <div class="app-name">SplitWise</div>
         <div class="spacer"></div>
         <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3 v9 l5 5"/></svg></div>
@@ -643,7 +650,12 @@ body {
 
       <!-- dim home behind -->
       <div class="app-bar">
-        <div class="logo-mini">S</div>
+        <div class="logo-mini">
+          <svg viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet">
+            <rect width="200" height="200" fill="#0A1F18"/>
+            <path d="M 200 0 L 110 0 L 75 90 L 125 90 L 50 200 L 200 200 Z" fill="#34D399"/>
+          </svg>
+        </div>
         <div class="app-name">SplitWise</div>
         <div class="spacer"></div>
         <div class="chip"></div>

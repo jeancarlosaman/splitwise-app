@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>SplitWise — Logo PNG exporter</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #09090B; --ink: #111114; --border: #26262C;
+  --mint: #34D399; --mintInk: #052E1F;
+  --text: #FAFAFA; --text2: #A1A1AA;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh; padding: 60px 24px;
+  display: flex; flex-direction: column; align-items: center;
+}
+h1 { font-weight: 800; letter-spacing: -1px; font-size: 28px; margin: 0 0 6px; }
+.lead { color: var(--text2); margin: 0 0 36px; font-size: 14px; text-align: center; }
+
+.preview {
+  background: linear-gradient(135deg, #1c1c20, #09090B);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 28px;
+  display: flex; gap: 32px;
+  align-items: center;
+  margin-bottom: 28px;
+}
+.preview canvas {
+  width: 200px; height: 200px;
+  border-radius: 44px;
+  display: block;
+}
+.preview .meta {
+  max-width: 280px;
+}
+.preview .meta b { font-size: 16px; }
+.preview .meta p { color: var(--text2); font-size: 13px; line-height: 1.5; margin: 4px 0 0; }
+
+.controls {
+  display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+}
+button {
+  background: var(--mint);
+  color: var(--mintInk);
+  border: 0;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 14px;
+  letter-spacing: -0.1px;
+  padding: 14px 22px;
+  border-radius: 14px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(52,211,153,0.25);
+}
+button.secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+.hint {
+  margin-top: 38px;
+  max-width: 600px;
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 1.6;
+  text-align: center;
+}
+code {
+  background: var(--ink);
+  border: 1px solid var(--border);
+  padding: 2px 7px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--text);
+}
+</style>
+</head>
+<body>
+
+<h1>Logo PNG exporter</h1>
+<p class="lead">Renders the B3 mark to a 1024 × 1024 PNG and downloads it. Use that file as the input for <code>flutter_launcher_icons</code>.</p>
+
+<div class="preview">
+  <canvas id="thumb" width="1024" height="1024"></canvas>
+  <div class="meta">
+    <b>splitwise_logo.png</b>
+    <p>1024 × 1024 · sRGB · iOS-ready (no rounded corners — iOS applies the mask automatically).</p>
+  </div>
+</div>
+
+<div class="controls">
+  <button id="download">Download 1024 × 1024 PNG</button>
+  <button class="secondary" id="downloadDark">Download dark-bg variant</button>
+</div>
+
+<p class="hint">
+  After downloading, drop <code>splitwise_logo.png</code> into <code>assets/icon/</code> in the project root and run:
+  <br>
+  <code>dart run flutter_launcher_icons</code>
+  <br><br>
+  That regenerates every iOS icon size under <code>ios/Runner/Assets.xcassets/AppIcon.appiconset/</code> from this single PNG.
+</p>
+
+<script>
+function renderLogo(ctx, withRoundedMask) {
+  const W = 1024;
+  ctx.clearRect(0, 0, W, W);
+
+  if (withRoundedMask) {
+    // Preview only — iOS apps don't need this baked in.
+    const r = 225; // ~22%, iOS standard
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(W - r, 0);
+    ctx.quadraticCurveTo(W, 0, W, r);
+    ctx.lineTo(W, W - r);
+    ctx.quadraticCurveTo(W, W, W - r, W);
+    ctx.lineTo(r, W);
+    ctx.quadraticCurveTo(0, W, 0, W - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.clip();
+  }
+
+  // Dark mint ground
+  ctx.fillStyle = '#0A1F18';
+  ctx.fillRect(0, 0, W, W);
+
+  // Bright mint bolt-as-cut (scaled from 200×200 viewBox)
+  const s = W / 200;
+  ctx.fillStyle = '#34D399';
+  ctx.beginPath();
+  ctx.moveTo(200 * s, 0);
+  ctx.lineTo(110 * s, 0);
+  ctx.lineTo(75 * s, 90 * s);
+  ctx.lineTo(125 * s, 90 * s);
+  ctx.lineTo(50 * s, 200 * s);
+  ctx.lineTo(200 * s, 200 * s);
+  ctx.closePath();
+  ctx.fill();
+}
+
+const thumb = document.getElementById('thumb');
+renderLogo(thumb.getContext('2d'), true); // mask for screen preview only
+
+function exportPng(name) {
+  const c = document.createElement('canvas');
+  c.width = 1024; c.height = 1024;
+  // Source PNG for iOS must be SQUARE, no rounded mask — iOS applies the mask.
+  renderLogo(c.getContext('2d'), false);
+  c.toBlob((blob) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }, 'image/png');
+}
+
+document.getElementById('download').onclick = () => exportPng('splitwise_logo.png');
+document.getElementById('downloadDark').onclick = () => exportPng('splitwise_logo_dark.png');
+</script>
+
+</body>
+</html>
