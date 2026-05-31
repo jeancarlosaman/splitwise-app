@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../expenses/models/receipt_item.dart';
 
 class ParsedReceipt {
@@ -5,7 +7,22 @@ class ParsedReceipt {
   final List<ReceiptItem> items;
   final double? total;
 
-  const ParsedReceipt({this.merchant, required this.items, this.total});
+  /// Raw ML Kit recognized text, kept so the review UI can show it in a
+  /// debug panel when item-name extraction fails. Pasting this back lets us
+  /// figure out which receipt format we're missing.
+  final String rawText;
+
+  const ParsedReceipt({
+    this.merchant,
+    required this.items,
+    this.total,
+    this.rawText = '',
+  });
+
+  /// How many items came out with a useful name vs the "Item" fallback.
+  /// 0 means total fallback — likely a parser bug for this receipt format.
+  int get namedItemCount =>
+      items.where((i) => i.name.toLowerCase() != 'item').length;
 }
 
 /// Parses raw OCR text from a receipt into structured data.
@@ -95,7 +112,10 @@ class ReceiptParser {
   );
 
   static ParsedReceipt parse(String rawText) {
-    if (rawText.trim().isEmpty) return const ParsedReceipt(items: []);
+    if (rawText.trim().isEmpty) {
+      return ParsedReceipt(items: const [], rawText: rawText);
+    }
+    debugPrint('[ReceiptParser] === RAW OCR TEXT ===\n$rawText\n=== END ===');
 
     final lines = rawText
         .split('\n')
@@ -143,13 +163,26 @@ class ReceiptParser {
       }
 
       // Extract item name. Try in order:
-      //   1. Text before the price on the same line.
-      //   2. If the line is JUST a price, look back at the previous line(s).
+      //   1. Text before the price on the same line ("BAGUETTE 2,50").
+      //   2. Text after the price on the same line ("2,50 BAGUETTE").
+      //   3. If the line is JUST a price, look at neighbouring lines —
+      //      backward first (most common: name above its price), then
+      //      forward (some receipts put price BEFORE the name on the next line).
       String name = '';
+      final beforeText = line.substring(0, priceMatch.start).trim();
+      final afterText = line.substring(priceMatch.end).trim();
+
       if (_priceOnlyLine.hasMatch(line)) {
-        name = _findItemNameBackward(lines, i, items, merchant);
+        name = _findItemNameNearby(lines, i, items, merchant);
+      } else if (beforeText.length >= 2 && !_isJustQty(beforeText)) {
+        name = beforeText;
+      } else if (afterText.length >= 2 && !_isJustQty(afterText)) {
+        // Price-before-name layout. Some Spanish thermal printers do this.
+        name = afterText;
       } else {
-        name = line.substring(0, priceMatch.start).trim();
+        // Single character or qty marker on the same line — fall back to
+        // neighbouring lines too. Better than emitting "Item".
+        name = _findItemNameNearby(lines, i, items, merchant);
       }
 
       name = _cleanItemName(name);
@@ -157,6 +190,9 @@ class ReceiptParser {
       // Final fallback only if we genuinely have nothing.
       if (name.isEmpty || name.length < 2) name = 'Item';
       if (name.length > 50) name = name.substring(0, 50).trim();
+
+      debugPrint(
+          '[ReceiptParser] line="$line" price=$price name="$name"');
 
       // Avoid adding the same line twice (some OCR engines duplicate)
       final alreadyAdded = items.any((e) =>
@@ -172,32 +208,64 @@ class ReceiptParser {
       total = items.fold<double>(0.0, (s, e) => s + e.price);
     }
 
-    return ParsedReceipt(merchant: merchant, items: items, total: total);
+    debugPrint(
+        '[ReceiptParser] DONE — ${items.length} items, ${items.where((i) => i.name.toLowerCase() != "item").length} named, total=$total');
+    return ParsedReceipt(
+        merchant: merchant, items: items, total: total, rawText: rawText);
   }
 
-  /// Walks backwards from [priceLineIndex] looking for the most recent line
-  /// that looks like an item description (text, no price, not noise, not the
-  /// merchant name, not already consumed by another item).
-  static String _findItemNameBackward(
+  /// True if the line is just a number / quantity marker like "1", "2 ud",
+  /// "3x" — should NOT be used as an item name.
+  static bool _isJustQty(String s) {
+    final t = s.trim();
+    if (RegExp(r'^\d+\s*(x|ud\.?|uds\.?|u\.?)?$', caseSensitive: false)
+        .hasMatch(t)) {
+      return true;
+    }
+    return false;
+  }
+
+  /// Searches both directions from [priceLineIndex] looking for a line
+  /// that looks like an item description (text, no price, not noise, not
+  /// the merchant, not already consumed). Backward is preferred (the most
+  /// common multi-line receipt layout puts the price under its item name).
+  static String _findItemNameNearby(
     List<String> lines,
     int priceLineIndex,
     List<ReceiptItem> existingItems,
     String? merchant,
   ) {
-    for (int j = priceLineIndex - 1; j >= 0 && j >= priceLineIndex - 3; j--) {
-      final candidate = lines[j].trim();
-      if (candidate.isEmpty) continue;
-      if (_pricePattern.hasMatch(candidate)) continue; // contains a price
-      if (_skipPattern.hasMatch(candidate)) continue;
-      if (_isNoisyMetadata.hasMatch(candidate)) continue;
+    bool isCandidate(String candidate) {
+      if (candidate.isEmpty) return false;
+      if (_pricePattern.hasMatch(candidate)) return false;
+      if (_skipPattern.hasMatch(candidate)) return false;
+      if (_isNoisyMetadata.hasMatch(candidate)) return false;
+      if (_isJustQty(candidate)) return false;
       if (merchant != null &&
-          candidate.toLowerCase() == merchant.toLowerCase()) continue;
-      // Skip if we already used this exact line as a previous item's name.
+          candidate.toLowerCase() == merchant.toLowerCase()) {
+        return false;
+      }
       if (existingItems.any((e) =>
           e.name.toLowerCase() == _cleanItemName(candidate).toLowerCase())) {
-        continue;
+        return false;
       }
-      return candidate;
+      return true;
+    }
+
+    // Backward — up to 3 lines back.
+    for (int j = priceLineIndex - 1;
+        j >= 0 && j >= priceLineIndex - 3;
+        j--) {
+      final candidate = lines[j].trim();
+      if (isCandidate(candidate)) return candidate;
+    }
+    // Forward — up to 2 lines ahead, for receipts where the price prints
+    // before the item description on the next line.
+    for (int j = priceLineIndex + 1;
+        j < lines.length && j <= priceLineIndex + 2;
+        j++) {
+      final candidate = lines[j].trim();
+      if (isCandidate(candidate)) return candidate;
     }
     return '';
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../expenses/models/receipt_item.dart';
 import '../../groups/models/group_member.dart';
@@ -11,11 +12,18 @@ class ReceiptReviewScreen extends StatefulWidget {
   final List<GroupMember> members;
   final double? detectedTotal;
 
+  /// Raw OCR text from ML Kit. Shown in a debug panel at the bottom of
+  /// the review screen so the user can paste it back when item-name
+  /// extraction misbehaves, which is the only reliable way to fix parser
+  /// edge cases without owning the actual receipt photo.
+  final String rawOcrText;
+
   const ReceiptReviewScreen({
     super.key,
     required this.items,
     required this.members,
     this.detectedTotal,
+    this.rawOcrText = '',
   });
 
   @override
@@ -356,6 +364,12 @@ class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
               },
             ),
           ),
+
+          // ── Debug: show raw OCR text so the user can paste it back when
+          //         item-name extraction misses. Foldable so it doesn't take
+          //         up space until you tap to expand. ─────────────────────
+          if (widget.rawOcrText.isNotEmpty)
+            _OcrDebugPanel(rawText: widget.rawOcrText),
         ],
       ),
       bottomNavigationBar: SafeArea(
@@ -367,6 +381,118 @@ class _ReceiptReviewScreenState extends State<ReceiptReviewScreen> {
             onPressed: _selectedCount > 0 ? _confirm : null,
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Expandable panel at the bottom of the review screen showing the raw
+/// ML Kit OCR text. Hidden by default. Tap to expand, then "Copy" to grab
+/// the text — paste it back in chat so we can improve the parser for the
+/// specific receipt format that's failing.
+class _OcrDebugPanel extends StatefulWidget {
+  final String rawText;
+  const _OcrDebugPanel({required this.rawText});
+
+  @override
+  State<_OcrDebugPanel> createState() => _OcrDebugPanelState();
+}
+
+class _OcrDebugPanelState extends State<_OcrDebugPanel> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppTheme.border, width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _open = !_open),
+            borderRadius: BorderRadius.circular(14),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 10),
+              child: Row(
+                children: [
+                  const Icon(Icons.bug_report_outlined,
+                      color: AppTheme.textSecondary, size: 16),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text('Raw OCR text (debug)',
+                        style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600)),
+                  ),
+                  if (_open)
+                    GestureDetector(
+                      onTap: () async {
+                        await Clipboard.setData(
+                            ClipboardData(text: widget.rawText));
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('OCR text copied'),
+                                  duration: Duration(seconds: 2)));
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.greenSubtle,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.copy_rounded,
+                                color: AppTheme.green, size: 12),
+                            SizedBox(width: 4),
+                            Text('Copy',
+                                style: TextStyle(
+                                    color: AppTheme.green,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  const SizedBox(width: 6),
+                  Icon(
+                      _open
+                          ? Icons.expand_less_rounded
+                          : Icons.expand_more_rounded,
+                      color: AppTheme.textSecondary,
+                      size: 18),
+                ],
+              ),
+            ),
+          ),
+          if (_open)
+            Container(
+              constraints: const BoxConstraints(maxHeight: 200),
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+              child: SingleChildScrollView(
+                child: SelectableText(
+                  widget.rawText,
+                  style: const TextStyle(
+                    color: AppTheme.textPrimary,
+                    fontSize: 11,
+                    fontFamily: 'monospace',
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -42,6 +42,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   List<ReceiptItem> _receiptItems = [];
   bool _isLoading = false;
 
+  /// Per-participant amount entries used when _splitType == 'by_amount'.
+  /// Keyed by userId — value is the raw text the user typed (we parse on submit).
+  final Map<String, TextEditingController> _customAmountCtrls = {};
+
   final _scanner = ReceiptScanner();
   final _voice = VoiceRecorder();
   bool _isListening = false;
@@ -60,7 +64,29 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     _amountCtrl.dispose();
     _scanner.dispose();
     _voice.dispose();
+    for (final c in _customAmountCtrls.values) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  /// Ensures there's a controller for every selected participant when the
+  /// "By amount" split mode is active. Called any time the participant set
+  /// or amount changes so the UI stays consistent.
+  TextEditingController _amountCtrlFor(String userId) {
+    return _customAmountCtrls.putIfAbsent(
+        userId, () => TextEditingController());
+  }
+
+  /// Sum of all currently-entered custom amounts (used for live validation).
+  double get _customAmountsSum {
+    double total = 0;
+    for (final id in _participantIds) {
+      final raw = _customAmountCtrls[id]?.text ?? '';
+      final v = double.tryParse(raw.replaceAll(',', '.'));
+      if (v != null) total += v;
+    }
+    return total;
   }
 
   // ── OCR flow ──────────────────────────────────────────────────────────────
@@ -101,6 +127,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             items: parsed.items,
             members: members,
             detectedTotal: parsed.total,
+            rawOcrText: parsed.rawText,
           ),
         ),
       );
@@ -356,18 +383,62 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
       final List<ExpenseParticipant> participants;
       if (_splitType == 'equal') {
-        final share = double.parse((amount / _participantIds.length).toStringAsFixed(2));
-        participants = _participantIds.map((id) => ExpenseParticipant(
-          id: '', expenseId: expense.id, userId: id, shareAmount: share)).toList();
+        // Equal split, with a rounding-residual correction on the first
+        // participant so the shares always sum to the exact amount (the
+        // DB trigger rejects mismatches).
+        final perRaw = amount / _participantIds.length;
+        final per = double.parse(perRaw.toStringAsFixed(2));
+        final ids = _participantIds.toList();
+        final residual =
+            double.parse((amount - per * ids.length).toStringAsFixed(2));
+        participants = [
+          for (int i = 0; i < ids.length; i++)
+            ExpenseParticipant(
+              id: '',
+              expenseId: expense.id,
+              userId: ids[i],
+              shareAmount: i == 0 ? per + residual : per,
+            ),
+        ];
+      } else if (_splitType == 'by_amount') {
+        // Per-participant exact amounts. Validate sum == total first so we
+        // give a clear error instead of letting the DB constraint do it.
+        final shares = <String, double>{};
+        for (final id in _participantIds) {
+          final raw = _customAmountCtrls[id]?.text ?? '';
+          final v = double.tryParse(raw.replaceAll(',', '.'));
+          if (v == null || v < 0) {
+            throw Exception(
+                'Enter a valid amount for every participant (or remove them)');
+          }
+          shares[id] = double.parse(v.toStringAsFixed(2));
+        }
+        final sum = shares.values.fold<double>(0, (a, b) => a + b);
+        if ((sum - amount).abs() > 0.01) {
+          throw Exception(
+              'Shares add up to ${sum.toStringAsFixed(2)} but the total is ${amount.toStringAsFixed(2)}');
+        }
+        participants = shares.entries
+            .map((e) => ExpenseParticipant(
+                id: '',
+                expenseId: expense.id,
+                userId: e.key,
+                shareAmount: e.value))
+            .toList();
       } else {
+        // by_item — derive shares from receipt-item assignments.
         final shareMap = <String, double>{};
         for (final item in _receiptItems) {
           if (item.assignedTo.isEmpty) {
             final per = item.price / _participantIds.length;
-            for (final id in _participantIds) shareMap[id] = (shareMap[id] ?? 0) + per;
+            for (final id in _participantIds) {
+              shareMap[id] = (shareMap[id] ?? 0) + per;
+            }
           } else {
             final per = item.price / item.assignedTo.length;
-            for (final id in item.assignedTo) shareMap[id] = (shareMap[id] ?? 0) + per;
+            for (final id in item.assignedTo) {
+              shareMap[id] = (shareMap[id] ?? 0) + per;
+            }
           }
         }
         participants = shareMap.entries.map((e) => ExpenseParticipant(
@@ -570,6 +641,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               segments: const [
                 ButtonSegment(value: 'equal', label: Text('Equal'),
                     icon: Icon(Icons.people_outline, size: 16)),
+                ButtonSegment(value: 'by_amount', label: Text('By Amount'),
+                    icon: Icon(Icons.tune_rounded, size: 16)),
                 ButtonSegment(value: 'by_item', label: Text('By Item'),
                     icon: Icon(Icons.receipt_long_outlined, size: 16)),
               ],
@@ -581,21 +654,41 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             // ── Participants ─────────────────────────────────
             _SectionLabel(label: 'Split with'),
             const SizedBox(height: 10),
-            Wrap(
-              spacing: 8, runSpacing: 8,
-              children: members.map((m) {
-                final selected = _participantIds.contains(m.user.id);
-                return _MemberChip(
-                  member: m, selected: selected,
-                  onTap: () => setState(() {
-                    selected
-                        ? _participantIds.remove(m.user.id)
-                        : _participantIds.add(m.user.id);
-                  }),
-                  checkmark: true,
-                );
-              }).toList(),
-            ),
+            if (_splitType == 'by_amount')
+              _ByAmountParticipants(
+                members: members,
+                participantIds: _participantIds,
+                amountCtrlFor: _amountCtrlFor,
+                totalCtrl: _amountCtrl,
+                currency: _currency,
+                onToggle: (userId) {
+                  setState(() {
+                    if (_participantIds.contains(userId)) {
+                      _participantIds.remove(userId);
+                    } else {
+                      _participantIds.add(userId);
+                    }
+                  });
+                },
+                onAmountChanged: () => setState(() {}),
+                runningSum: _customAmountsSum,
+              )
+            else
+              Wrap(
+                spacing: 8, runSpacing: 8,
+                children: members.map((m) {
+                  final selected = _participantIds.contains(m.user.id);
+                  return _MemberChip(
+                    member: m, selected: selected,
+                    onTap: () => setState(() {
+                      selected
+                          ? _participantIds.remove(m.user.id)
+                          : _participantIds.add(m.user.id);
+                    }),
+                    checkmark: true,
+                  );
+                }).toList(),
+              ),
 
             // ── Receipt items preview ────────────────────────
             if (_receiptItems.isNotEmpty) ...[
@@ -649,6 +742,244 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── By-amount participant list ────────────────────────────────────────────
+/// Stack of rows: avatar + name + amount input. When the total controller
+/// changes (user retypes the expense amount), the green "remaining" pill
+/// updates live so the user can see how much is still unaccounted for.
+class _ByAmountParticipants extends StatelessWidget {
+  final List<GroupMember> members;
+  final Set<String> participantIds;
+  final TextEditingController Function(String userId) amountCtrlFor;
+  final TextEditingController totalCtrl;
+  final String currency;
+  final void Function(String userId) onToggle;
+  final VoidCallback onAmountChanged;
+  final double runningSum;
+
+  const _ByAmountParticipants({
+    required this.members,
+    required this.participantIds,
+    required this.amountCtrlFor,
+    required this.totalCtrl,
+    required this.currency,
+    required this.onToggle,
+    required this.onAmountChanged,
+    required this.runningSum,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final total = double.tryParse(totalCtrl.text.replaceAll(',', '.')) ?? 0;
+    final remaining = total - runningSum;
+    final exact = remaining.abs() < 0.01;
+    final over = remaining < -0.01;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Sum / remaining banner
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: exact
+                ? const Color(0xFF0A1F18)
+                : over
+                    ? const Color(0xFF1F0A0A)
+                    : AppTheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+                color: exact
+                    ? AppTheme.green.withValues(alpha: 0.4)
+                    : over
+                        ? AppTheme.negative.withValues(alpha: 0.4)
+                        : AppTheme.border,
+                width: 1),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                exact
+                    ? Icons.check_circle_rounded
+                    : over
+                        ? Icons.warning_amber_rounded
+                        : Icons.calculate_rounded,
+                size: 16,
+                color: exact
+                    ? AppTheme.green
+                    : over
+                        ? AppTheme.negative
+                        : AppTheme.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  exact
+                      ? 'Splits add up to the total'
+                      : over
+                          ? '${CurrencyUtils.format(remaining.abs(), currency: currency)} over total'
+                          : '${CurrencyUtils.format(remaining, currency: currency)} left to assign',
+                  style: TextStyle(
+                    color: exact
+                        ? AppTheme.green
+                        : over
+                            ? AppTheme.negative
+                            : AppTheme.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              Text(
+                CurrencyUtils.format(runningSum, currency: currency),
+                style: const TextStyle(
+                  color: AppTheme.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const Text(' / ',
+                  style: TextStyle(color: AppTheme.textSecondary)),
+              Text(
+                CurrencyUtils.format(total, currency: currency),
+                style: const TextStyle(
+                  color: AppTheme.textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Per-member rows
+        ...members.map((m) {
+          final selected = participantIds.contains(m.user.id);
+          final ctrl = amountCtrlFor(m.user.id);
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: selected ? AppTheme.surface : AppTheme.surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: selected
+                        ? AppTheme.green.withValues(alpha: 0.35)
+                        : AppTheme.border,
+                    width: 1),
+              ),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: () => onToggle(m.user.id),
+                    behavior: HitTestBehavior.opaque,
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? AppTheme.green
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(7),
+                            border: Border.all(
+                                color: selected
+                                    ? AppTheme.green
+                                    : AppTheme.border,
+                                width: 1.5),
+                          ),
+                          child: selected
+                              ? const Icon(Icons.check_rounded,
+                                  size: 14, color: Colors.black)
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Text(m.user.displayName,
+                            style: const TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14)),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  SizedBox(
+                    width: 120,
+                    child: TextField(
+                      controller: ctrl,
+                      enabled: selected,
+                      keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true),
+                      textAlign: TextAlign.right,
+                      onChanged: (_) => onAmountChanged(),
+                      style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        hintText: selected ? '0.00' : '—',
+                        hintStyle:
+                            const TextStyle(color: AppTheme.textSecondary),
+                        contentPadding:
+                            const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        filled: true,
+                        fillColor: AppTheme.surface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(
+                              color: AppTheme.border, width: 0.5),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(
+                              color: AppTheme.border, width: 0.5),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(
+                              color: AppTheme.green, width: 1.5),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+
+        // Quick-action: split the remainder equally between selected
+        if (!exact && participantIds.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                icon: const Icon(Icons.balance_rounded, size: 16),
+                label: const Text('Split remainder equally'),
+                onPressed: () {
+                  final per = remaining / participantIds.length;
+                  for (final id in participantIds) {
+                    final c = amountCtrlFor(id);
+                    final current = double.tryParse(
+                            c.text.replaceAll(',', '.')) ??
+                        0;
+                    c.text = (current + per).toStringAsFixed(2);
+                  }
+                  onAmountChanged();
+                },
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
