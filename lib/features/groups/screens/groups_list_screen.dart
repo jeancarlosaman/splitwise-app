@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/group.dart';
 import '../providers/groups_provider.dart';
 import '../../balances/screens/settle_all_screen.dart';
 import '../../../core/constants.dart';
 import '../../../core/theme.dart';
 import '../../../core/utils/currency_utils.dart';
-import '../../../shared/repositories/groups_repository.dart';
 
 class GroupsListScreen extends ConsumerWidget {
   const GroupsListScreen({super.key});
@@ -19,142 +19,149 @@ class GroupsListScreen extends ConsumerWidget {
     final sharedGroups = ref.watch(sharedGroupsProvider);
     final settlementsAsync = ref.watch(allSettlementsProvider);
 
+    // Compute the user's net position (incoming - outgoing) for the hero card.
+    final entries = settlementsAsync.value ?? const [];
+    final youOweTotal =
+        entries.where((e) => e.youOwe).fold<double>(0, (s, e) => s + e.amount);
+    final owedToYouTotal = entries
+        .where((e) => !e.youOwe)
+        .fold<double>(0, (s, e) => s + e.amount);
+    final net = owedToYouTotal - youOweTotal;
+    final hasAnyDebts = entries.isNotEmpty;
+
     return Scaffold(
-      backgroundColor: AppTheme.black,
+      backgroundColor: AppTheme.bg,
       body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
         slivers: [
+          // ── Compact app bar ─────────────────────────────────────────────
           SliverAppBar(
-            expandedHeight: 130,
             pinned: true,
-            backgroundColor: AppTheme.black,
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              title: Row(
-                children: [
-                  Container(
-                    width: 28, height: 28,
-                    decoration: BoxDecoration(
-                      color: AppTheme.greenSubtle,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppTheme.green.withOpacity(0.4)),
-                    ),
-                    child: const Center(child: Text('💸', style: TextStyle(fontSize: 14))),
+            backgroundColor: AppTheme.bg,
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            toolbarHeight: 56,
+            title: Row(
+              children: [
+                Container(
+                  width: 30,
+                  height: 30,
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.mintGradient,
+                    borderRadius: BorderRadius.circular(9),
                   ),
-                  const SizedBox(width: 10),
-                  const Text('SplitWise',
-                    style: TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w800,
-                        fontSize: 18, letterSpacing: -0.5)),
-                ],
-              ),
-              background: Container(
-                color: AppTheme.black,
-                padding: const EdgeInsets.fromLTRB(20, 60, 20, 0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Expanded(
-                      child: Text('My Groups',
-                        style: TextStyle(color: AppTheme.textPrimary, fontSize: 30,
-                            fontWeight: FontWeight.w800, letterSpacing: -1)),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.pie_chart_rounded,
-                          color: AppTheme.textSecondary),
-                      onPressed: () => context.push('/stats'),
-                      tooltip: 'Statistics',
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.person_rounded,
-                          color: AppTheme.textSecondary),
-                      onPressed: () => context.push('/profile'),
-                      tooltip: 'Profile',
-                    ),
-                  ],
+                  child: const Center(
+                    child: Text('S',
+                        style: TextStyle(
+                            color: Color(0xFF052E1F),
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16)),
+                  ),
                 ),
+                const SizedBox(width: 10),
+                const Text('SplitWise',
+                    style: TextStyle(
+                        color: AppTheme.textPrimary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                        letterSpacing: -0.4)),
+              ],
+            ),
+            actions: [
+              _AppBarChip(
+                icon: Icons.pie_chart_rounded,
+                onTap: () => context.push('/stats'),
+              ),
+              const SizedBox(width: 8),
+              _AppBarChip(
+                icon: Icons.person_rounded,
+                onTap: () => context.push('/profile'),
+              ),
+              const SizedBox(width: 16),
+            ],
+          ),
+
+          // ── Hero balance card ───────────────────────────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              child: _HeroBalanceCard(
+                net: net,
+                youOweTotal: youOweTotal,
+                owedToYouTotal: owedToYouTotal,
+                hasData: hasAnyDebts || settlementsAsync.hasValue,
+                onTap: hasAnyDebts ? () => context.push('/settle') : null,
               ),
             ),
           ),
 
-          // "Things to settle" banner — only shows when there are outstanding
-          // payments involving the current user.
-          SliverToBoxAdapter(
-            child: settlementsAsync.maybeWhen(
-              data: (entries) {
-                if (entries.isEmpty) return const SizedBox.shrink();
-                final youOweTotal = entries
-                    .where((e) => e.youOwe)
-                    .fold<double>(0, (s, e) => s + e.amount);
-                final owedToYouTotal = entries
-                    .where((e) => !e.youOwe)
-                    .fold<double>(0, (s, e) => s + e.amount);
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                  child: _SettleBanner(
-                    count: entries.length,
-                    youOweTotal: youOweTotal,
-                    owedToYouTotal: owedToYouTotal,
-                    onTap: () => context.push('/settle'),
-                  ),
-                );
-              },
-              orElse: () => const SizedBox.shrink(),
-            ),
-          ),
-
-          // Personal group tile — always visible at the top, even before any
-          // shared groups exist.
+          // ── Personal group tile ─────────────────────────────────────────
           SliverToBoxAdapter(
             child: personalAsync.when(
-              loading: () => const SizedBox.shrink(),
+              loading: () => const SizedBox(height: 90),
               error: (_, __) => const SizedBox.shrink(),
               data: (personal) => Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
                 child: _PersonalGroupCard(group: personal),
               ),
             ),
           ),
 
-          // Section header for shared groups
+          // ── Section header ──────────────────────────────────────────────
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 6),
+              padding: const EdgeInsets.fromLTRB(22, 20, 22, 10),
               child: Row(
                 children: [
-                  const Text('Shared Groups',
+                  const Text('SHARED GROUPS',
                       style: TextStyle(
-                          color: AppTheme.textSecondary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
-                          letterSpacing: 0.5)),
+                          color: AppTheme.textTertiary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                          letterSpacing: 1.2)),
                   const Spacer(),
                   if (sharedGroups.isNotEmpty)
-                    Text('${sharedGroups.length}',
-                        style: const TextStyle(
-                            color: AppTheme.textSecondary, fontSize: 13)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppTheme.ink2,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text('${sharedGroups.length}',
+                          style: const TextStyle(
+                              color: AppTheme.textSecondary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700)),
+                    ),
                 ],
               ),
             ),
           ),
 
+          // ── Shared groups list ──────────────────────────────────────────
           groupsAsync.when(
             loading: () => const SliverToBoxAdapter(
               child: Padding(
                 padding: EdgeInsets.all(32),
                 child: Center(
-                    child: CircularProgressIndicator(color: AppTheme.green)),
+                    child: CircularProgressIndicator(
+                        color: AppTheme.mint, strokeWidth: 2.5)),
               ),
             ),
             error: (e, _) => SliverToBoxAdapter(
-                child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Text('Error: $e',
-                        style: const TextStyle(color: AppTheme.textSecondary)))),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text('Error: $e',
+                    style: const TextStyle(color: AppTheme.textSecondary)),
+              ),
+            ),
             data: (_) {
               if (sharedGroups.isEmpty) {
                 return const SliverToBoxAdapter(child: _SharedEmptyState());
               }
               return SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate(
                     (context, i) => _GroupCard(group: sharedGroups[i]),
@@ -166,307 +173,161 @@ class GroupsListScreen extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          // Secondary "Join" FAB above the main "New Group" one — surfacing
-          // both actions without burying join in a menu.
-          FloatingActionButton.extended(
-            heroTag: 'joinFab',
-            onPressed: () => _showJoinDialog(context, ref),
-            backgroundColor: AppTheme.surface,
-            foregroundColor: AppTheme.textPrimary,
-            elevation: 0,
-            icon: const Icon(Icons.group_add_rounded),
-            label: const Text('Join',
-                style: TextStyle(fontWeight: FontWeight.w700)),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: AppTheme.border, width: 0.5),
-            ),
-          ),
-          const SizedBox(height: 10),
-          FloatingActionButton.extended(
-            heroTag: 'createFab',
-            onPressed: () => context.push('/groups/create'),
-            backgroundColor: AppTheme.green,
-            foregroundColor: Colors.black,
-            elevation: 0,
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('New Group',
-                style: TextStyle(fontWeight: FontWeight.w700)),
-          ),
-        ],
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/groups/create'),
+        icon: const Icon(Icons.add_rounded, size: 22),
+        label: const Text('New Group',
+            style: TextStyle(
+                fontWeight: FontWeight.w700, letterSpacing: -0.1)),
       ),
     );
   }
 }
 
-void _showJoinDialog(BuildContext context, WidgetRef ref) {
-  final ctrl = TextEditingController();
-  showDialog<void>(
-    context: context,
-    builder: (ctx) => AlertDialog(
-      backgroundColor: AppTheme.surface,
-      title: const Text('Join a group',
-          style: TextStyle(color: AppTheme.textPrimary)),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Enter the 8-character code your friend shared:',
-              style: TextStyle(color: AppTheme.textSecondary)),
-          const SizedBox(height: 14),
-          TextField(
-            controller: ctrl,
-            autofocus: true,
-            textCapitalization: TextCapitalization.characters,
-            style: const TextStyle(
-                color: AppTheme.textPrimary,
-                fontWeight: FontWeight.w800,
-                fontSize: 22,
-                letterSpacing: 4),
-            decoration: InputDecoration(
-              hintText: 'ABCD1234',
-              hintStyle: TextStyle(
-                  color: AppTheme.textSecondary.withValues(alpha: 0.5),
-                  letterSpacing: 4),
-              filled: true,
-              fillColor: AppTheme.greenSubtle,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          style: FilledButton.styleFrom(
-              backgroundColor: AppTheme.green, foregroundColor: Colors.black),
-          onPressed: () async {
-            final code = ctrl.text.trim();
-            if (code.length < 4) {
-              ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
-                  content: Text('Enter a valid 8-character code')));
-              return;
-            }
-            try {
-              final groupId = await GroupsRepository().joinByCode(code);
-              await ref.read(groupsProvider.notifier).refresh();
-              if (ctx.mounted) {
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  backgroundColor: AppTheme.greenSubtle,
-                  content: const Text('Joined! Opening group…',
-                      style: TextStyle(color: AppTheme.textPrimary)),
-                ));
-                // ignore: use_build_context_synchronously
-                context.push('/groups/$groupId');
-              }
-            } catch (e) {
-              if (ctx.mounted) {
-                ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
-                  content: Text(e.toString().contains('invalid_code')
-                      ? 'Invalid code — double-check with your friend'
-                      : 'Couldn\'t join: $e'),
-                ));
-              }
-            }
-          },
-          child: const Text('Join'),
-        ),
-      ],
-    ),
-  );
-}
-
-class _GroupCard extends ConsumerWidget {
-  final dynamic group;
-  const _GroupCard({required this.group});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () => context.push('/groups/${group.id}'),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: AppTheme.border, width: 0.5),
-            ),
-            padding: const EdgeInsets.all(18),
-            child: Row(
-              children: [
-                Container(
-                  width: 54, height: 54,
-                  decoration: BoxDecoration(
-                    color: AppTheme.greenSubtle,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.green.withOpacity(0.2)),
-                  ),
-                  child: Center(child: Text(group.emoji, style: const TextStyle(fontSize: 26))),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(group.name,
-                        style: const TextStyle(color: AppTheme.textPrimary,
-                            fontWeight: FontWeight.w700, fontSize: 16)),
-                      const SizedBox(height: 4),
-                      const Text('Tap to view expenses',
-                        style: TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
-                    ],
-                  ),
-                ),
-                const Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SettleBanner extends StatelessWidget {
-  final int count;
+// ── Hero balance card ─────────────────────────────────────────────────────
+class _HeroBalanceCard extends StatelessWidget {
+  final double net;
   final double youOweTotal;
   final double owedToYouTotal;
-  final VoidCallback onTap;
+  final bool hasData;
+  final VoidCallback? onTap;
 
-  const _SettleBanner({
-    required this.count,
+  const _HeroBalanceCard({
+    required this.net,
     required this.youOweTotal,
     required this.owedToYouTotal,
-    required this.onTap,
+    required this.hasData,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final youOwe = youOweTotal > 0;
-    final owedToYou = owedToYouTotal > 0;
-    // Color the banner red if the user has unpaid debts (more urgent),
-    // otherwise green for "money coming your way".
-    final accent = youOwe ? AppTheme.negative : AppTheme.positive;
+    final isPositive = net >= 0;
+    final accent = isPositive ? AppTheme.mint : AppTheme.negative;
+
+    // Subtle tinted gradient backdrop in the direction of the net position.
+    final gradient = !hasData
+        ? AppTheme.cardGradient
+        : (isPositive
+            ? AppTheme.mintTintGradient
+            : AppTheme.negativeTintGradient);
 
     return Material(
-      color: AppTheme.surface,
-      borderRadius: BorderRadius.circular(20),
+      color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: const BorderRadius.all(AppTheme.radiusXl),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
+            gradient: gradient,
+            borderRadius: const BorderRadius.all(AppTheme.radiusXl),
             border: Border.all(
-                color: accent.withValues(alpha: 0.4), width: 1),
+              color: hasData
+                  ? accent.withValues(alpha: 0.25)
+                  : AppTheme.border,
+              width: 1,
+            ),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(Icons.swap_horiz_rounded,
-                    color: accent, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Things to settle',
-                      style: const TextStyle(
-                          color: AppTheme.textPrimary,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16),
+              Row(
+                children: [
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                        color: accent, borderRadius: BorderRadius.circular(4)),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    !hasData
+                        ? 'NET POSITION'
+                        : isPositive
+                            ? 'YOU ARE OWED'
+                            : 'YOU OWE',
+                    style: const TextStyle(
+                      color: AppTheme.textSecondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.4,
                     ),
-                    const SizedBox(height: 2),
-                    Text.rich(
-                      TextSpan(children: [
-                        if (youOwe) ...[
-                          const TextSpan(
-                            text: 'you owe ',
-                            style: TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 13),
-                          ),
-                          TextSpan(
-                            text: CurrencyUtils.format(youOweTotal,
-                                currency: AppConstants.defaultCurrency),
-                            style: const TextStyle(
-                                color: AppTheme.negative,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13),
-                          ),
-                        ],
-                        if (youOwe && owedToYou)
-                          const TextSpan(
-                              text: '  ·  ',
+                  ),
+                  const Spacer(),
+                  if (onTap != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Settle',
                               style: TextStyle(
-                                  color: AppTheme.textSecondary,
-                                  fontSize: 13)),
-                        if (owedToYou) ...[
-                          TextSpan(
-                            text: CurrencyUtils.format(owedToYouTotal,
-                                currency: AppConstants.defaultCurrency),
-                            style: const TextStyle(
-                                color: AppTheme.positive,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 13),
-                          ),
-                          const TextSpan(
-                            text: ' owed to you',
-                            style: TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 13),
-                          ),
+                                  color: accent,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.2)),
+                          const SizedBox(width: 2),
+                          Icon(Icons.arrow_forward_rounded,
+                              size: 12, color: accent),
                         ],
-                      ]),
+                      ),
                     ),
-                  ],
-                ),
+                ],
               ),
-              const SizedBox(width: 8),
+              const SizedBox(height: 14),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    !hasData
+                        ? CurrencyUtils.format(0,
+                            currency: AppConstants.defaultCurrency)
+                        : '${isPositive ? '' : '-'}${CurrencyUtils.format(net.abs(), currency: AppConstants.defaultCurrency)}',
+                    style: AppTheme.moneyHero(
+                        color:
+                            !hasData ? AppTheme.textSecondary : accent),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(10),
+                  color: Colors.black.withValues(alpha: 0.25),
+                  borderRadius:
+                      const BorderRadius.all(AppTheme.radiusMd),
+                  border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.04),
+                      width: 0.5),
                 ),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      '$count',
-                      style: TextStyle(
-                          color: accent,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 13),
+                    Expanded(
+                      child: _HeroSubStat(
+                        label: 'You owe',
+                        amount: youOweTotal,
+                        accent: AppTheme.negative,
+                      ),
                     ),
-                    const SizedBox(width: 4),
-                    Icon(Icons.chevron_right_rounded,
-                        color: accent, size: 18),
+                    Container(
+                        width: 1,
+                        height: 32,
+                        color: Colors.white.withValues(alpha: 0.06)),
+                    Expanded(
+                      child: _HeroSubStat(
+                        label: 'Owed to you',
+                        amount: owedToYouTotal,
+                        accent: AppTheme.mint,
+                        alignEnd: true,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -478,35 +339,112 @@ class _SettleBanner extends StatelessWidget {
   }
 }
 
+class _HeroSubStat extends StatelessWidget {
+  final String label;
+  final double amount;
+  final Color accent;
+  final bool alignEnd;
+  const _HeroSubStat({
+    required this.label,
+    required this.amount,
+    required this.accent,
+    this.alignEnd = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final align = alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: Column(
+        crossAxisAlignment: align,
+        children: [
+          Text(label.toUpperCase(),
+              style: const TextStyle(
+                  color: AppTheme.textTertiary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1)),
+          const SizedBox(height: 4),
+          Text(
+              CurrencyUtils.format(amount,
+                  currency: AppConstants.defaultCurrency),
+              style: AppTheme.moneyStyle(
+                  fontSize: 15, color: accent, weight: FontWeight.w800)),
+        ],
+      ),
+    );
+  }
+}
+
+// ── App-bar chip (round icon button) ──────────────────────────────────────
+class _AppBarChip extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _AppBarChip({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: AppTheme.ink2,
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            border: Border.all(color: AppTheme.border, width: 1),
+            shape: BoxShape.circle,
+          ),
+          child: Icon(icon, color: AppTheme.textSecondary, size: 18),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Personal group tile ───────────────────────────────────────────────────
 class _PersonalGroupCard extends StatelessWidget {
-  final dynamic group;
+  final ExpenseGroup group;
   const _PersonalGroupCard({required this.group});
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppTheme.greenSubtle,
-      borderRadius: BorderRadius.circular(20),
+      color: Colors.transparent,
       child: InkWell(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: const BorderRadius.all(AppTheme.radiusLg),
         onTap: () => context.push('/groups/${group.id}'),
         child: Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppTheme.green.withOpacity(0.35), width: 1),
+            gradient: AppTheme.mintTintGradient,
+            borderRadius: const BorderRadius.all(AppTheme.radiusLg),
+            border: Border.all(
+                color: AppTheme.mint.withValues(alpha: 0.25), width: 1),
           ),
           padding: const EdgeInsets.all(18),
           child: Row(
             children: [
               Container(
-                width: 54,
-                height: 54,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
-                  color: AppTheme.green,
-                  borderRadius: BorderRadius.circular(16),
+                  gradient: AppTheme.mintGradient,
+                  borderRadius: BorderRadius.circular(15),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: AppTheme.mintGlow,
+                      blurRadius: 18,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: const Center(
-                    child: Text('👤', style: TextStyle(fontSize: 26))),
+                  child: Icon(Icons.person_rounded,
+                      color: Color(0xFF052E1F), size: 26),
+                ),
               ),
               const SizedBox(width: 16),
               const Expanded(
@@ -517,16 +455,26 @@ class _PersonalGroupCard extends StatelessWidget {
                         style: TextStyle(
                             color: AppTheme.textPrimary,
                             fontWeight: FontWeight.w800,
-                            fontSize: 17)),
-                    SizedBox(height: 4),
-                    Text('Solo spending — just for you',
+                            fontSize: 17,
+                            letterSpacing: -0.3)),
+                    SizedBox(height: 3),
+                    Text('Solo spending · just for you',
                         style: TextStyle(
-                            color: AppTheme.textSecondary, fontSize: 13)),
+                            color: AppTheme.textSecondary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500)),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: AppTheme.textSecondary),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.chevron_right_rounded,
+                    color: AppTheme.mint, size: 18),
+              ),
             ],
           ),
         ),
@@ -535,44 +483,114 @@ class _PersonalGroupCard extends StatelessWidget {
   }
 }
 
+// ── Shared group card ─────────────────────────────────────────────────────
+class _GroupCard extends ConsumerWidget {
+  final ExpenseGroup group;
+  const _GroupCard({required this.group});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: const BorderRadius.all(AppTheme.radiusLg),
+          onTap: () => context.push('/groups/${group.id}'),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: AppTheme.cardGradient,
+              borderRadius: const BorderRadius.all(AppTheme.radiusLg),
+              border: Border.all(color: AppTheme.border, width: 1),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: AppTheme.ink2,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppTheme.border, width: 1),
+                  ),
+                  child: Center(
+                      child: Text(group.emoji,
+                          style: const TextStyle(fontSize: 24))),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(group.name,
+                          style: const TextStyle(
+                              color: AppTheme.textPrimary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                              letterSpacing: -0.2)),
+                      const SizedBox(height: 2),
+                      Text('Tap to open',
+                          style: TextStyle(
+                              color: AppTheme.textTertiary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded,
+                    color: AppTheme.textTertiary, size: 22),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Empty state for shared groups ─────────────────────────────────────────
 class _SharedEmptyState extends StatelessWidget {
   const _SharedEmptyState();
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: AppTheme.surface,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppTheme.border, width: 0.5),
+          gradient: AppTheme.cardGradient,
+          borderRadius: const BorderRadius.all(AppTheme.radiusLg),
+          border: Border.all(color: AppTheme.border, width: 1),
         ),
         child: Column(
           children: [
             Container(
-              width: 64,
-              height: 64,
+              width: 56,
+              height: 56,
               decoration: BoxDecoration(
-                color: AppTheme.greenSubtle,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: AppTheme.green.withOpacity(0.3)),
+                color: AppTheme.ink2,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: AppTheme.border, width: 1),
               ),
               child: const Center(
-                  child: Text('💸', style: TextStyle(fontSize: 28))),
+                  child: Icon(Icons.group_outlined,
+                      color: AppTheme.textSecondary, size: 26)),
             ),
             const SizedBox(height: 14),
             const Text('No shared groups yet',
                 style: TextStyle(
                     color: AppTheme.textPrimary,
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700)),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             const Text('Create one to split expenses with friends',
                 textAlign: TextAlign.center,
-                style:
-                    TextStyle(color: AppTheme.textSecondary, fontSize: 13)),
+                style: TextStyle(
+                    color: AppTheme.textTertiary,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500)),
           ],
         ),
       ),

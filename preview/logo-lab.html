@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>SplitWise — Logo Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #09090B;
+  --ink: #111114;
+  --ink2: #18181B;
+  --border: #26262C;
+  --mint: #34D399;
+  --mintBright: #6EE7B7;
+  --mintDeep: #10B981;
+  --text: #FAFAFA;
+  --text2: #A1A1AA;
+  --text3: #71717A;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  font-family: 'Inter', -apple-system, sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  padding: 60px 40px;
+}
+h1 {
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: -1px;
+  font-size: 34px;
+  margin: 0 0 8px;
+}
+.lead {
+  text-align: center;
+  color: var(--text2);
+  margin: 0 0 60px;
+  font-weight: 500;
+  font-size: 14px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.card {
+  background: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 28px 26px;
+  text-align: center;
+}
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--mint);
+  background: rgba(52,211,153,0.12);
+  padding: 4px 10px;
+  border-radius: 6px;
+  margin-bottom: 18px;
+}
+.name {
+  font-weight: 800;
+  font-size: 19px;
+  letter-spacing: -0.4px;
+  margin-bottom: 8px;
+}
+.desc {
+  color: var(--text2);
+  font-size: 13px;
+  line-height: 1.5;
+  margin-bottom: 22px;
+  min-height: 60px;
+}
+.sizes {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+  padding: 22px 0;
+  background: linear-gradient(135deg, #1c1c20 0%, #09090B 100%);
+  border-radius: 14px;
+  border: 0.5px solid var(--border);
+}
+.sizes svg.lg { width: 130px; height: 130px; border-radius: 28px; }
+.sizes svg.md { width: 60px; height: 60px; border-radius: 13px; }
+.sizes svg.sm { width: 32px; height: 32px; border-radius: 7px; }
+.sizelabels {
+  display: flex; justify-content: center; gap: 30px;
+  color: var(--text3); font-size: 11px; font-weight: 600; letter-spacing: 0.5px;
+}
+.context {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  background: var(--ink2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px;
+  margin-top: 16px;
+}
+.context svg { width: 36px; height: 36px; border-radius: 10px; }
+.context .meta { text-align: left; }
+.context .meta-name { font-weight: 800; font-size: 14px; }
+.context .meta-sub { color: var(--text2); font-size: 11px; margin-top: 2px; }
+.pick {
+  display: block;
+  margin-top: 14px;
+  background: var(--ink2);
+  color: var(--text2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  font-weight: 700;
+  font-size: 13px;
+  text-decoration: none;
+  letter-spacing: 0.2px;
+}
+.note {
+  text-align: center;
+  margin-top: 60px;
+  color: var(--text3);
+  font-size: 13px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
+}
+</style>
+</head>
+<body>
+<h1>Logo Directions</h1>
+<p class="lead">Six fresh concepts. Tell me a letter (A–F) and I'll polish it as the real app icon + mark.</p>
+
+<div class="grid">
+
+  <!-- ═══ A — Bold S, no decoration ═══ -->
+  <div class="card">
+    <span class="tag">A · WORDMARK</span>
+    <div class="name">Bold S</div>
+    <div class="desc">Stripe / Vercel territory. Just a heavy "S" in Inter Black on solid mint. Maximum legibility at every size.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <text x="100" y="148" text-anchor="middle" font-family="Inter" font-weight="900" font-size="180" fill="#052E1F" letter-spacing="-12">S</text>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <text x="100" y="148" text-anchor="middle" font-family="Inter" font-weight="900" font-size="180" fill="#052E1F" letter-spacing="-12">S</text>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <text x="100" y="148" text-anchor="middle" font-family="Inter" font-weight="900" font-size="180" fill="#052E1F" letter-spacing="-12">S</text>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#34D399"/><text x="100" y="148" text-anchor="middle" font-family="Inter" font-weight="900" font-size="180" fill="#052E1F" letter-spacing="-12">S</text></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending · just for you</div></div>
+    </div>
+  </div>
+
+  <!-- ═══ B — Divided coin ═══ -->
+  <div class="card">
+    <span class="tag">B · SYMBOL</span>
+    <div class="name">Split Coin</div>
+    <div class="desc">A circle cleanly cut into two halves of slightly different tones — the universal "split" metaphor without being literal.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <defs>
+          <linearGradient id="bbg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#18181B"/>
+            <stop offset="100%" stop-color="#09090B"/>
+          </linearGradient>
+        </defs>
+        <rect width="200" height="200" fill="url(#bbg)"/>
+        <circle cx="100" cy="100" r="60" fill="#34D399"/>
+        <path d="M 100,40 A 60,60 0 0,1 100,160 Z" fill="#10B981"/>
+        <rect x="98" y="40" width="4" height="120" fill="#052E1F"/>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#09090B"/>
+        <circle cx="100" cy="100" r="60" fill="#34D399"/>
+        <path d="M 100,40 A 60,60 0 0,1 100,160 Z" fill="#10B981"/>
+        <rect x="98" y="40" width="4" height="120" fill="#052E1F"/>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#09090B"/>
+        <circle cx="100" cy="100" r="60" fill="#34D399"/>
+        <path d="M 100,40 A 60,60 0 0,1 100,160 Z" fill="#10B981"/>
+        <rect x="98" y="40" width="4" height="120" fill="#052E1F"/>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#09090B"/><circle cx="100" cy="100" r="60" fill="#34D399"/><path d="M 100,40 A 60,60 0 0,1 100,160 Z" fill="#10B981"/><rect x="98" y="40" width="4" height="120" fill="#052E1F"/></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending · just for you</div></div>
+    </div>
+  </div>
+
+  <!-- ═══ C — Diagonal divider ═══ -->
+  <div class="card">
+    <span class="tag">C · GEOMETRIC</span>
+    <div class="name">Diagonal Cut</div>
+    <div class="desc">Sharper, more "premium-card" feeling. A single diagonal line splits the icon — like a bill being torn in half. Apple Wallet vibe.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <defs>
+          <linearGradient id="cMint" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#6EE7B7"/>
+            <stop offset="100%" stop-color="#34D399"/>
+          </linearGradient>
+          <linearGradient id="cDeep" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#10B981"/>
+            <stop offset="100%" stop-color="#047857"/>
+          </linearGradient>
+        </defs>
+        <rect width="200" height="200" fill="url(#cMint)"/>
+        <polygon points="200,0 200,200 0,200" fill="url(#cDeep)"/>
+        <line x1="0" y1="200" x2="200" y2="0" stroke="#052E1F" stroke-width="4"/>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <line x1="0" y1="200" x2="200" y2="0" stroke="#052E1F" stroke-width="4"/>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <line x1="0" y1="200" x2="200" y2="0" stroke="#052E1F" stroke-width="4"/>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#34D399"/><polygon points="200,0 200,200 0,200" fill="#10B981"/><line x1="0" y1="200" x2="200" y2="0" stroke="#052E1F" stroke-width="4"/></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending · just for you</div></div>
+    </div>
+  </div>
+
+  <!-- ═══ D — Two overlapping shapes ═══ -->
+  <div class="card">
+    <span class="tag">D · SYMBOL</span>
+    <div class="name">Two Halves</div>
+    <div class="desc">Two soft squircles overlapping — the "togetherness" metaphor. Friendly without being childish. Works well at app-icon scale.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#0A1F18"/>
+        <rect x="40" y="40" width="80" height="80" rx="22" fill="#34D399"/>
+        <rect x="80" y="80" width="80" height="80" rx="22" fill="#6EE7B7" opacity="0.85"/>
+        <rect x="80" y="80" width="40" height="40" fill="#10B981"/>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#0A1F18"/>
+        <rect x="40" y="40" width="80" height="80" rx="22" fill="#34D399"/>
+        <rect x="80" y="80" width="80" height="80" rx="22" fill="#6EE7B7" opacity="0.85"/>
+        <rect x="80" y="80" width="40" height="40" fill="#10B981"/>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#0A1F18"/>
+        <rect x="40" y="40" width="80" height="80" rx="22" fill="#34D399"/>
+        <rect x="80" y="80" width="80" height="80" rx="22" fill="#6EE7B7" opacity="0.85"/>
+        <rect x="80" y="80" width="40" height="40" fill="#10B981"/>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#0A1F18"/><rect x="40" y="40" width="80" height="80" rx="22" fill="#34D399"/><rect x="80" y="80" width="80" height="80" rx="22" fill="#6EE7B7" opacity="0.85"/><rect x="80" y="80" width="40" height="40" fill="#10B981"/></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending · just for you</div></div>
+    </div>
+  </div>
+
+  <!-- ═══ E — Euro fold ═══ -->
+  <div class="card">
+    <span class="tag">E · FINANCIAL</span>
+    <div class="name">€ Mark</div>
+    <div class="desc">Direct and honest about what the app does. A stylized euro with two horizontal lines doubling as the "split". Pure fintech.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#09090B"/>
+        <rect x="20" y="20" width="160" height="160" rx="36" fill="none" stroke="#34D399" stroke-width="3"/>
+        <text x="100" y="142" text-anchor="middle" font-family="Inter" font-weight="900" font-size="140" fill="#34D399" letter-spacing="-4">€</text>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#09090B"/>
+        <rect x="20" y="20" width="160" height="160" rx="36" fill="none" stroke="#34D399" stroke-width="3"/>
+        <text x="100" y="142" text-anchor="middle" font-family="Inter" font-weight="900" font-size="140" fill="#34D399" letter-spacing="-4">€</text>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#09090B"/>
+        <rect x="20" y="20" width="160" height="160" rx="36" fill="none" stroke="#34D399" stroke-width="3"/>
+        <text x="100" y="142" text-anchor="middle" font-family="Inter" font-weight="900" font-size="140" fill="#34D399" letter-spacing="-4">€</text>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#09090B"/><rect x="20" y="20" width="160" height="160" rx="36" fill="none" stroke="#34D399" stroke-width="3"/><text x="100" y="142" text-anchor="middle" font-family="Inter" font-weight="900" font-size="140" fill="#34D399" letter-spacing="-4">€</text></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending · just for you</div></div>
+    </div>
+  </div>
+
+  <!-- ═══ F — Slash / forward divide ═══ -->
+  <div class="card">
+    <span class="tag">F · MINIMAL</span>
+    <div class="name">Slash</div>
+    <div class="desc">A single forward-slash — the "divide" symbol made into a mark. Extremely minimal, programmer-aesthetic. Linear / Vercel territory.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#09090B"/>
+        <rect x="92" y="20" width="32" height="160" rx="8" fill="#34D399" transform="rotate(20 100 100)"/>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#09090B"/>
+        <rect x="92" y="20" width="32" height="160" rx="8" fill="#34D399" transform="rotate(20 100 100)"/>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#09090B"/>
+        <rect x="92" y="20" width="32" height="160" rx="8" fill="#34D399" transform="rotate(20 100 100)"/>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#09090B"/><rect x="92" y="20" width="32" height="160" rx="8" fill="#34D399" transform="rotate(20 100 100)"/></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending · just for you</div></div>
+    </div>
+  </div>
+
+</div>
+
+<p class="note">
+  Each card shows the icon at three sizes (App-Store 1024px, home-screen 180px, settings 120px) plus a "next to the app name" preview so you can judge how it reads against the wordmark. None are final — pick a direction and I'll polish the chosen one with proper gradients, shadows, and depth tuning.
+</p>
+
+</body>
+</html>

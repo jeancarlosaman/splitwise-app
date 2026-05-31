@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>SplitWise — Logo Lab C (with marks)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #09090B;
+  --ink: #111114;
+  --ink2: #18181B;
+  --border: #26262C;
+  --mint: #34D399;
+  --mintBright: #6EE7B7;
+  --mintDeep: #10B981;
+  --mintInk: #052E1F;
+  --text: #FAFAFA;
+  --text2: #A1A1AA;
+  --text3: #71717A;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  font-family: 'Inter', -apple-system, sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  padding: 60px 40px;
+}
+h1 {
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: -1px;
+  font-size: 30px;
+  margin: 0 0 8px;
+}
+.lead {
+  text-align: center;
+  color: var(--text2);
+  margin: 0 0 50px;
+  font-weight: 500;
+  font-size: 14px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.5;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.card {
+  background: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 24px;
+  text-align: center;
+}
+.tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--mint);
+  background: rgba(52,211,153,0.12);
+  padding: 4px 10px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+.name {
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.3px;
+  margin-bottom: 6px;
+}
+.desc {
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 18px;
+  min-height: 56px;
+}
+.sizes {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  padding: 22px 0;
+  background: linear-gradient(135deg, #1c1c20 0%, #09090B 100%);
+  border-radius: 14px;
+  border: 0.5px solid var(--border);
+}
+.sizes svg.lg { width: 130px; height: 130px; border-radius: 28px; }
+.sizes svg.md { width: 60px; height: 60px; border-radius: 13px; }
+.sizes svg.sm { width: 32px; height: 32px; border-radius: 7px; }
+.sizelabels {
+  display: flex; justify-content: center; gap: 28px;
+  color: var(--text3); font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+.context {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: var(--ink2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 8px;
+}
+.context svg { width: 34px; height: 34px; border-radius: 9px; }
+.context .meta { text-align: left; }
+.context .meta-name { font-weight: 800; font-size: 13px; }
+.context .meta-sub { color: var(--text2); font-size: 11px; margin-top: 2px; }
+.note {
+  text-align: center;
+  margin-top: 50px;
+  color: var(--text3);
+  font-size: 12px;
+  max-width: 580px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
+}
+</style>
+</head>
+<body>
+
+<h1>C variants with a mark</h1>
+<p class="lead">All on the C2 base — two flat mint tones meeting on the diagonal — with a different symbol layered. Pick a code (e.g. <b>C-Bolt</b>, <b>C-Arrows</b>) and I'll lock it in.</p>
+
+<div class="grid">
+
+  <!-- ════════════ C-BOLT — Lightning bolt centered ════════════ -->
+  <div class="card">
+    <span class="tag">C-BOLT</span>
+    <div class="name">Lightning</div>
+    <div class="desc">Fast / instant settlement vibe. Cash-App-coded. The bolt sits over the diagonal so the two metaphors reinforce.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <path d="M 112 50 L 78 110 L 100 110 L 88 150 L 122 90 L 100 90 Z" fill="#052E1F"/>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <path d="M 112 50 L 78 110 L 100 110 L 88 150 L 122 90 L 100 90 Z" fill="#052E1F"/>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <path d="M 112 50 L 78 110 L 100 110 L 88 150 L 122 90 L 100 90 Z" fill="#052E1F"/>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#34D399"/><polygon points="200,0 200,200 0,200" fill="#10B981"/><path d="M 112 50 L 78 110 L 100 110 L 88 150 L 122 90 L 100 90 Z" fill="#052E1F"/></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+  <!-- ════════════ C-BOLT-AS-CUT — bolt IS the cut ════════════ -->
+  <div class="card">
+    <span class="tag">C-BOLT-CUT</span>
+    <div class="name">Bolt-as-Cut</div>
+    <div class="desc">The lightning replaces the diagonal entirely — it both splits and signals "fast". Most cohesive of the bolt options.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <path d="M 200,0 L 130,80 L 160,80 L 90,200 L 200,200 Z" fill="#10B981"/>
+        <path d="M 110,0 L 40,120 L 70,120 L 0,200 L 0,0 Z" fill="#34D399"/>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <path d="M 200,0 L 130,80 L 160,80 L 90,200 L 200,200 Z" fill="#10B981"/>
+        <path d="M 110,0 L 40,120 L 70,120 L 0,200 L 0,0 Z" fill="#34D399"/>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <path d="M 200,0 L 130,80 L 160,80 L 90,200 L 200,200 Z" fill="#10B981"/>
+        <path d="M 110,0 L 40,120 L 70,120 L 0,200 L 0,0 Z" fill="#34D399"/>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#34D399"/><path d="M 200,0 L 130,80 L 160,80 L 90,200 L 200,200 Z" fill="#10B981"/><path d="M 110,0 L 40,120 L 70,120 L 0,200 L 0,0 Z" fill="#34D399"/></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+  <!-- ════════════ C-ARROWS — exchange ════════════ -->
+  <div class="card">
+    <span class="tag">C-ARROWS</span>
+    <div class="name">Exchange</div>
+    <div class="desc">Two arrows pointing opposite directions — money flowing between people. The most "fintech" of the bunch.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <g fill="#052E1F">
+          <!-- up arrow -->
+          <path d="M 78 130 L 78 70 L 64 84 L 60 80 L 80 60 L 100 80 L 96 84 L 82 70 L 82 130 Z"/>
+          <!-- down arrow -->
+          <path d="M 122 70 L 122 130 L 136 116 L 140 120 L 120 140 L 100 120 L 104 116 L 118 130 L 118 70 Z"/>
+        </g>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <g fill="#052E1F">
+          <path d="M 78 130 L 78 70 L 64 84 L 60 80 L 80 60 L 100 80 L 96 84 L 82 70 L 82 130 Z"/>
+          <path d="M 122 70 L 122 130 L 136 116 L 140 120 L 120 140 L 100 120 L 104 116 L 118 130 L 118 70 Z"/>
+        </g>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <g fill="#052E1F">
+          <path d="M 78 130 L 78 70 L 64 84 L 60 80 L 80 60 L 100 80 L 96 84 L 82 70 L 82 130 Z"/>
+          <path d="M 122 70 L 122 130 L 136 116 L 140 120 L 120 140 L 100 120 L 104 116 L 118 130 L 118 70 Z"/>
+        </g>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#34D399"/><polygon points="200,0 200,200 0,200" fill="#10B981"/><g fill="#052E1F"><path d="M 78 130 L 78 70 L 64 84 L 60 80 L 80 60 L 100 80 L 96 84 L 82 70 L 82 130 Z"/><path d="M 122 70 L 122 130 L 136 116 L 140 120 L 120 140 L 100 120 L 104 116 L 118 130 L 118 70 Z"/></g></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+  <!-- ════════════ C-S — letter mark over the cut ════════════ -->
+  <div class="card">
+    <span class="tag">C-S</span>
+    <div class="name">S over Cut</div>
+    <div class="desc">A bold "S" sits on the diagonal — the cut feels like the bill being split through the brand letter.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <text x="100" y="148" text-anchor="middle" font-family="Inter" font-weight="900" font-size="150" fill="#052E1F" letter-spacing="-8">S</text>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <text x="100" y="148" text-anchor="middle" font-family="Inter" font-weight="900" font-size="150" fill="#052E1F" letter-spacing="-8">S</text>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <text x="100" y="148" text-anchor="middle" font-family="Inter" font-weight="900" font-size="150" fill="#052E1F" letter-spacing="-8">S</text>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#34D399"/><polygon points="200,0 200,200 0,200" fill="#10B981"/><text x="100" y="148" text-anchor="middle" font-family="Inter" font-weight="900" font-size="150" fill="#052E1F" letter-spacing="-8">S</text></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+  <!-- ════════════ C-EURO — € symbol centered ════════════ -->
+  <div class="card">
+    <span class="tag">C-EURO</span>
+    <div class="name">€ Mark</div>
+    <div class="desc">Direct and honest. The euro symbol sits on the cut — no doubt what the app is for.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <text x="100" y="148" text-anchor="middle" font-family="Inter" font-weight="900" font-size="130" fill="#052E1F" letter-spacing="-2">€</text>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <text x="100" y="148" text-anchor="middle" font-family="Inter" font-weight="900" font-size="130" fill="#052E1F" letter-spacing="-2">€</text>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <text x="100" y="148" text-anchor="middle" font-family="Inter" font-weight="900" font-size="130" fill="#052E1F" letter-spacing="-2">€</text>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#34D399"/><polygon points="200,0 200,200 0,200" fill="#10B981"/><text x="100" y="148" text-anchor="middle" font-family="Inter" font-weight="900" font-size="130" fill="#052E1F" letter-spacing="-2">€</text></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+  <!-- ════════════ C-DOTS — two people across the divide ════════════ -->
+  <div class="card">
+    <span class="tag">C-DOTS</span>
+    <div class="name">Two Dots</div>
+    <div class="desc">Two small dots, one on each side of the diagonal — minimal "two people" metaphor. Maximally subtle.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <circle cx="60" cy="60" r="12" fill="#052E1F"/>
+        <circle cx="140" cy="140" r="12" fill="#052E1F"/>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <circle cx="60" cy="60" r="12" fill="#052E1F"/>
+        <circle cx="140" cy="140" r="12" fill="#052E1F"/>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <circle cx="60" cy="60" r="12" fill="#052E1F"/>
+        <circle cx="140" cy="140" r="12" fill="#052E1F"/>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#34D399"/><polygon points="200,0 200,200 0,200" fill="#10B981"/><circle cx="60" cy="60" r="12" fill="#052E1F"/><circle cx="140" cy="140" r="12" fill="#052E1F"/></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+</div>
+
+<p class="note">
+  Tell me a code (<b>C-Bolt</b>, <b>C-Bolt-Cut</b>, <b>C-Arrows</b>, <b>C-S</b>, <b>C-Euro</b>, <b>C-Dots</b>) and I'll commit it as the real <code>logo.svg</code>, regenerate the home-screen mockup with it, and write the export script for all iOS icon sizes.
+</p>
+
+</body>
+</html>

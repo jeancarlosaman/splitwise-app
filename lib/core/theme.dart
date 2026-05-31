@@ -1,207 +1,345 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
+/// Premium dark fintech palette + typography. Inspired by Revolut / N26 /
+/// Apple Wallet — tonal blacks with a refined mint accent, generous spacing,
+/// Inter font with tabular figures so amounts line up cleanly across rows.
 class AppTheme {
-  // ── Brand palette ─────────────────────────────────────────────────────────
-  static const green         = Color(0xFF00E676);
-  static const greenDark     = Color(0xFF00C853);
-  static const greenSubtle   = Color(0xFF0D2618);
-  static const black         = Color(0xFF000000);
-  static const surface       = Color(0xFF0D0D0D);
-  static const surface2      = Color(0xFF161616);
-  static const border        = Color(0xFF222222);
-  static const textPrimary   = Color(0xFFFFFFFF);
-  static const textSecondary = Color(0xFF888888);
-  static const positive      = Color(0xFF00E676);
-  static const negative      = Color(0xFFFF5252);
-  static const amber         = Color(0xFFFFD600);
+  // ── Base palette ──────────────────────────────────────────────────────────
+  // Warmer than pure black so the eye can perceive tonal depth.
+  static const bg = Color(0xFF09090B);
+  static const black = bg; // legacy alias
 
-  // Legacy aliases so existing code compiles without changes
-  static const primary  = green;
+  /// Tonal surface scale — lighter as you go up in elevation.
+  /// Use ink (the "deepest" tone) for cards on bg, ink2 for cards on ink, etc.
+  static const ink = Color(0xFF111114);
+  static const ink2 = Color(0xFF18181B);
+  static const ink3 = Color(0xFF26262C);
+  static const surface = ink; // legacy alias
+  static const surface2 = ink2; // legacy alias
+
+  /// Hairline borders. Subtle so cards feel sculpted by tone, not boxed in.
+  static const border = Color(0xFF26262C);
+  static const borderStrong = Color(0xFF3F3F46);
+
+  // ── Brand: refined mint ───────────────────────────────────────────────────
+  // Slightly desaturated vs the loud Material Design green, with better
+  // contrast on dark backgrounds.
+  static const mint = Color(0xFF34D399);
+  static const mintBright = Color(0xFF6EE7B7);
+  static const mintDeep = Color(0xFF059669);
+  static const mintGlow = Color(0x4034D399); // semi-transparent for glow halos
+  static const mintTint = Color(0xFF0A1F18); // subtle bg behind mint elements
+
+  static const green = mint; // legacy alias
+  static const greenDark = mintDeep; // legacy alias
+  static const greenSubtle = mintTint; // legacy alias
+
+  // ── Semantic colors ───────────────────────────────────────────────────────
+  static const positive = mint;
+  static const negative = Color(0xFFF87171);
+  static const negativeTint = Color(0xFF1F0A0A);
+  static const amber = Color(0xFFFBBF24);
+  static const violet = Color(0xFFA78BFA);
+  static const blue = Color(0xFF60A5FA);
+  static const pink = Color(0xFFF472B6);
+  static const orange = Color(0xFFFB923C);
+
+  // ── Text ──────────────────────────────────────────────────────────────────
+  static const textPrimary = Color(0xFFFAFAFA);
+  static const textSecondary = Color(0xFFA1A1AA);
+  static const textTertiary = Color(0xFF71717A);
+
+  // ── Legacy compatibility ─────────────────────────────────────────────────
+  static const primary = mint;
   static const cardDark = surface;
 
-  static const _radius      = Radius.circular(20);
-  static const _inputRadius = Radius.circular(14);
+  // ── Radii ─────────────────────────────────────────────────────────────────
+  static const radiusSm = Radius.circular(10);
+  static const radiusMd = Radius.circular(16);
+  static const radiusLg = Radius.circular(22);
+  static const radiusXl = Radius.circular(28);
+  static const _radius = radiusLg;
+  static const _inputRadius = radiusMd;
 
+  // ── Typography ────────────────────────────────────────────────────────────
+  /// Inter — the de-facto fintech font (used by Revolut, N26, Stripe, Linear).
+  static TextTheme _buildTextTheme() {
+    final base = GoogleFonts.interTextTheme().apply(
+      bodyColor: textPrimary,
+      displayColor: textPrimary,
+    );
+    return base.copyWith(
+      displayLarge: base.displayLarge?.copyWith(
+        fontWeight: FontWeight.w800,
+        letterSpacing: -1.5,
+      ),
+      displayMedium: base.displayMedium?.copyWith(
+        fontWeight: FontWeight.w800,
+        letterSpacing: -1,
+      ),
+      displaySmall: base.displaySmall?.copyWith(
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.5,
+      ),
+      headlineLarge: base.headlineLarge?.copyWith(
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.8,
+      ),
+      headlineMedium: base.headlineMedium?.copyWith(
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.4,
+      ),
+      headlineSmall: base.headlineSmall?.copyWith(
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.2,
+      ),
+      titleLarge:
+          base.titleLarge?.copyWith(fontWeight: FontWeight.w700),
+      titleMedium:
+          base.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+      titleSmall: base.titleSmall?.copyWith(
+        color: textSecondary,
+        fontWeight: FontWeight.w600,
+        fontSize: 13,
+        letterSpacing: 0.2,
+      ),
+      labelLarge:
+          base.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+      labelMedium:
+          base.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+      labelSmall: base.labelSmall?.copyWith(
+        color: textTertiary,
+        fontSize: 11,
+        letterSpacing: 0.6,
+        fontWeight: FontWeight.w600,
+      ),
+      bodyLarge: base.bodyLarge?.copyWith(height: 1.4),
+      bodyMedium: base.bodyMedium?.copyWith(height: 1.4),
+      bodySmall: base.bodySmall?.copyWith(
+          color: textSecondary, fontSize: 12, height: 1.4),
+    );
+  }
+
+  /// Tabular-figures Inter — use for any amount displayed in a list so the
+  /// digits line up across rows (column-aligned numerics).
+  static TextStyle moneyStyle({
+    double fontSize = 16,
+    FontWeight weight = FontWeight.w800,
+    Color? color,
+    double letterSpacing = -0.3,
+  }) =>
+      GoogleFonts.inter(
+        fontSize: fontSize,
+        fontWeight: weight,
+        color: color ?? textPrimary,
+        letterSpacing: letterSpacing,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      );
+
+  /// Big hero balance — the single number at the top of summary cards.
+  static TextStyle moneyHero({Color? color}) => GoogleFonts.inter(
+        fontSize: 38,
+        fontWeight: FontWeight.w800,
+        color: color ?? textPrimary,
+        letterSpacing: -1.5,
+        height: 1.05,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      );
+
+  // ── Theme ─────────────────────────────────────────────────────────────────
   static ThemeData get dark => ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: black,
+        scaffoldBackgroundColor: bg,
+        canvasColor: bg,
         colorScheme: const ColorScheme.dark(
-          primary: green,
-          secondary: greenDark,
-          surface: surface,
-          onPrimary: Colors.black,
-          onSecondary: Colors.black,
+          primary: mint,
+          secondary: mintDeep,
+          surface: ink,
+          surfaceContainerHighest: ink2,
+          onPrimary: Color(0xFF052E1F),
+          onSecondary: Colors.white,
           onSurface: textPrimary,
           outline: border,
+          outlineVariant: borderStrong,
           error: negative,
         ),
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
+        textTheme: _buildTextTheme(),
+        appBarTheme: AppBarTheme(
+          centerTitle: false,
           elevation: 0,
           scrolledUnderElevation: 0,
-          backgroundColor: black,
+          backgroundColor: bg,
+          surfaceTintColor: Colors.transparent,
           foregroundColor: textPrimary,
-          systemOverlayStyle: SystemUiOverlayStyle(
+          systemOverlayStyle: const SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
             statusBarIconBrightness: Brightness.light,
           ),
-          titleTextStyle: TextStyle(
-            fontSize: 18,
+          titleTextStyle: GoogleFonts.inter(
+            fontSize: 17,
             fontWeight: FontWeight.w700,
             color: textPrimary,
             letterSpacing: -0.3,
           ),
-          iconTheme: IconThemeData(color: textPrimary),
+          iconTheme: const IconThemeData(color: textPrimary, size: 22),
         ),
         cardTheme: CardThemeData(
           elevation: 0,
-          color: surface,
+          color: ink,
+          surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(_radius),
-            side: const BorderSide(color: border, width: 0.5),
+            borderRadius: const BorderRadius.all(_radius),
+            side: const BorderSide(color: border, width: 1),
           ),
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         ),
-        dividerTheme: const DividerThemeData(color: border, thickness: 0.5),
+        dividerTheme: const DividerThemeData(
+            color: border, thickness: 1, space: 1),
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
-          fillColor: surface,
+          fillColor: ink,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.all(_inputRadius),
-            borderSide: const BorderSide(color: border, width: 0.5),
+            borderRadius: const BorderRadius.all(_inputRadius),
+            borderSide: const BorderSide(color: border, width: 1),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.all(_inputRadius),
-            borderSide: const BorderSide(color: border, width: 0.5),
+            borderRadius: const BorderRadius.all(_inputRadius),
+            borderSide: const BorderSide(color: border, width: 1),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.all(_inputRadius),
-            borderSide: const BorderSide(color: green, width: 1.5),
+            borderRadius: const BorderRadius.all(_inputRadius),
+            borderSide: const BorderSide(color: mint, width: 1.5),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.all(_inputRadius),
+            borderRadius: const BorderRadius.all(_inputRadius),
             borderSide: const BorderSide(color: negative, width: 1),
           ),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-          labelStyle: const TextStyle(color: textSecondary),
-          hintStyle: const TextStyle(color: textSecondary),
+          labelStyle: GoogleFonts.inter(color: textSecondary),
+          hintStyle: GoogleFonts.inter(color: textTertiary),
           prefixIconColor: textSecondary,
           suffixIconColor: textSecondary,
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: green,
-            foregroundColor: Colors.black,
-            minimumSize: const Size(double.infinity, 54),
+            backgroundColor: mint,
+            foregroundColor: const Color(0xFF052E1F),
+            minimumSize: const Size(double.infinity, 52),
             elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(_inputRadius),
-            ),
-            textStyle: const TextStyle(
+            shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(radiusMd)),
+            textStyle: GoogleFonts.inter(
               fontSize: 15,
               fontWeight: FontWeight.w700,
-              letterSpacing: 0.2,
+              letterSpacing: -0.1,
             ),
           ),
         ),
         filledButtonTheme: FilledButtonThemeData(
           style: FilledButton.styleFrom(
-            backgroundColor: green,
-            foregroundColor: Colors.black,
-            textStyle: const TextStyle(fontWeight: FontWeight.w700),
+            backgroundColor: mint,
+            foregroundColor: const Color(0xFF052E1F),
+            shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(radiusMd)),
+            textStyle: GoogleFonts.inter(
+                fontWeight: FontWeight.w700, fontSize: 14),
           ),
         ),
         textButtonTheme: TextButtonThemeData(
-          style: TextButton.styleFrom(foregroundColor: green),
+          style: TextButton.styleFrom(
+            foregroundColor: mint,
+            textStyle:
+                GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
+          ),
         ),
         floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: green,
-          foregroundColor: Colors.black,
+          backgroundColor: mint,
+          foregroundColor: Color(0xFF052E1F),
           elevation: 0,
+          focusElevation: 0,
+          hoverElevation: 0,
+          highlightElevation: 0,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(radiusXl)),
         ),
         chipTheme: ChipThemeData(
-          backgroundColor: surface2,
-          selectedColor: greenSubtle,
-          side: const BorderSide(color: border, width: 0.5),
-          labelStyle: const TextStyle(color: textPrimary, fontSize: 13),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          checkmarkColor: green,
+          backgroundColor: ink2,
+          selectedColor: mintTint,
+          side: const BorderSide(color: border, width: 1),
+          labelStyle: GoogleFonts.inter(
+              color: textPrimary, fontSize: 12, fontWeight: FontWeight.w600),
+          shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(radiusSm)),
+          checkmarkColor: mint,
+          padding:
+              const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         ),
-        tabBarTheme: const TabBarThemeData(
-          labelColor: green,
-          unselectedLabelColor: textSecondary,
-          indicatorColor: green,
+        tabBarTheme: TabBarThemeData(
+          labelColor: textPrimary,
+          unselectedLabelColor: textTertiary,
+          indicatorColor: mint,
           indicatorSize: TabBarIndicatorSize.label,
           dividerColor: border,
+          labelStyle: GoogleFonts.inter(
+              fontWeight: FontWeight.w700, fontSize: 13, letterSpacing: 0.1),
+          unselectedLabelStyle:
+              GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13),
         ),
         listTileTheme: const ListTileThemeData(
           iconColor: textSecondary,
           textColor: textPrimary,
         ),
         snackBarTheme: SnackBarThemeData(
-          backgroundColor: surface2,
-          contentTextStyle: const TextStyle(color: textPrimary),
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: ink3,
+          contentTextStyle:
+              GoogleFonts.inter(color: textPrimary, fontSize: 13),
+          shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(radiusMd)),
           behavior: SnackBarBehavior.floating,
+          actionTextColor: mint,
         ),
         bottomSheetTheme: const BottomSheetThemeData(
-          backgroundColor: surface,
-          modalBackgroundColor: surface,
+          backgroundColor: ink,
+          modalBackgroundColor: ink,
+          surfaceTintColor: Colors.transparent,
+          showDragHandle: false,
           shape: RoundedRectangleBorder(
-            borderRadius:
-                BorderRadius.vertical(top: Radius.circular(24)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
           ),
         ),
         segmentedButtonTheme: SegmentedButtonThemeData(
           style: SegmentedButton.styleFrom(
-            backgroundColor: surface,
-            selectedBackgroundColor: greenSubtle,
+            backgroundColor: ink,
+            selectedBackgroundColor: mintTint,
             foregroundColor: textSecondary,
-            selectedForegroundColor: green,
-            side: const BorderSide(color: border, width: 0.5),
+            selectedForegroundColor: mint,
+            side: const BorderSide(color: border, width: 1),
           ),
         ),
         dialogTheme: DialogThemeData(
-          backgroundColor: surface,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          titleTextStyle: const TextStyle(
-              color: textPrimary,
-              fontSize: 18,
-              fontWeight: FontWeight.w700),
-          contentTextStyle:
-              const TextStyle(color: textSecondary, fontSize: 14),
+          backgroundColor: ink,
+          surfaceTintColor: Colors.transparent,
+          shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(radiusLg)),
+          titleTextStyle: GoogleFonts.inter(
+            color: textPrimary,
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
+          ),
+          contentTextStyle: GoogleFonts.inter(
+              color: textSecondary, fontSize: 14, height: 1.4),
         ),
-        textTheme: const TextTheme(
-          headlineLarge: TextStyle(
-              color: textPrimary,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -1),
-          headlineMedium: TextStyle(
-              color: textPrimary,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.5),
-          headlineSmall:
-              TextStyle(color: textPrimary, fontWeight: FontWeight.w700),
-          titleLarge:
-              TextStyle(color: textPrimary, fontWeight: FontWeight.w700),
-          titleMedium:
-              TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
-          titleSmall: TextStyle(
-              color: textSecondary,
-              fontWeight: FontWeight.w600,
-              fontSize: 13),
-          bodyLarge: TextStyle(color: textPrimary),
-          bodyMedium: TextStyle(color: textPrimary),
-          bodySmall: TextStyle(color: textSecondary, fontSize: 12),
-          labelLarge:
-              TextStyle(color: textPrimary, fontWeight: FontWeight.w600),
-          labelSmall: TextStyle(color: textSecondary, fontSize: 11),
+        iconButtonTheme: IconButtonThemeData(
+          style: IconButton.styleFrom(
+            foregroundColor: textSecondary,
+            shape: const RoundedRectangleBorder(
+                borderRadius: BorderRadius.all(radiusSm)),
+          ),
         ),
       );
 
@@ -209,23 +347,47 @@ class AppTheme {
   static ThemeData get light => dark;
 
   // ── Gradients ─────────────────────────────────────────────────────────────
-  static const greenGradient = LinearGradient(
-    colors: [green, greenDark],
+  /// Subtle mint glow — use for hero balance cards and primary CTAs.
+  static const mintGradient = LinearGradient(
+    colors: [Color(0xFF34D399), Color(0xFF10B981)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
-  // Legacy alias
-  static const primaryGradient = greenGradient;
+  /// Premium card backdrop — barely-there gradient that adds tonal depth
+  /// without screaming "I'm a gradient".
+  static const cardGradient = LinearGradient(
+    colors: [Color(0xFF18181B), Color(0xFF111114)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
+  /// Tinted variant for positive/hero cards (mint glow at top fading out).
+  static const mintTintGradient = LinearGradient(
+    colors: [Color(0xFF143228), Color(0xFF111114)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+
+  /// Tinted variant for warning/owing cards.
+  static const negativeTintGradient = LinearGradient(
+    colors: [Color(0xFF2A1212), Color(0xFF111114)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+
+  // Legacy aliases
+  static const greenGradient = mintGradient;
+  static const primaryGradient = mintGradient;
   static const redGradient = LinearGradient(
-    colors: [Color(0xFFFF5252), Color(0xFFD50000)],
+    colors: [Color(0xFFF87171), Color(0xFFDC2626)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 }
 
-// ── Green gradient button ────────────────────────────────────────────────────
+/// Mint-gradient primary CTA with a soft glow shadow. Used as the headline
+/// action on auth screens, add-expense, settle-up, etc.
 class GradientButton extends StatelessWidget {
   final String label;
   final IconData? icon;
@@ -238,27 +400,29 @@ class GradientButton extends StatelessWidget {
     required this.label,
     this.icon,
     required this.onPressed,
-    this.gradient = AppTheme.greenGradient,
+    this.gradient = AppTheme.mintGradient,
     this.isLoading = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final disabled = onPressed == null;
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
       height: 54,
       width: double.infinity,
       decoration: BoxDecoration(
         gradient: disabled ? null : gradient,
-        color: disabled ? AppTheme.surface2 : null,
-        borderRadius: BorderRadius.circular(14),
+        color: disabled ? AppTheme.ink2 : null,
+        borderRadius: const BorderRadius.all(AppTheme.radiusMd),
         boxShadow: disabled
             ? null
-            : [
+            : const [
                 BoxShadow(
-                  color: AppTheme.green.withOpacity(0.25),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
+                  color: AppTheme.mintGlow,
+                  blurRadius: 24,
+                  offset: Offset(0, 8),
                 ),
               ],
       ),
@@ -266,29 +430,35 @@ class GradientButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: isLoading ? null : onPressed,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: const BorderRadius.all(AppTheme.radiusMd),
           child: Center(
             child: isLoading
                 ? const SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2.5, color: Colors.black),
+                        strokeWidth: 2.5, color: Color(0xFF052E1F)),
                   )
                 : Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (icon != null) ...[
-                        Icon(icon, color: Colors.black, size: 18),
+                        Icon(icon,
+                            color: disabled
+                                ? AppTheme.textSecondary
+                                : const Color(0xFF052E1F),
+                            size: 18),
                         const SizedBox(width: 8),
                       ],
                       Text(
                         label,
                         style: TextStyle(
-                          color:
-                              disabled ? AppTheme.textSecondary : Colors.black,
+                          color: disabled
+                              ? AppTheme.textSecondary
+                              : const Color(0xFF052E1F),
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
+                          letterSpacing: -0.1,
                         ),
                       ),
                     ],

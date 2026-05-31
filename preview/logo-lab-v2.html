@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>SplitWise — Logo Lab v2 (minimal C + D)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #09090B;
+  --ink: #111114;
+  --ink2: #18181B;
+  --border: #26262C;
+  --mint: #34D399;
+  --mintBright: #6EE7B7;
+  --mintDeep: #10B981;
+  --mintTint: #0A1F18;
+  --text: #FAFAFA;
+  --text2: #A1A1AA;
+  --text3: #71717A;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  font-family: 'Inter', -apple-system, sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  padding: 60px 40px;
+}
+h1 {
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: -1px;
+  font-size: 30px;
+  margin: 0 0 8px;
+}
+.lead {
+  text-align: center;
+  color: var(--text2);
+  margin: 0 0 50px;
+  font-weight: 500;
+  font-size: 14px;
+}
+.group-title {
+  text-align: center;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  color: var(--text3);
+  margin: 50px 0 18px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.card {
+  background: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 24px;
+  text-align: center;
+}
+.tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--mint);
+  background: rgba(52,211,153,0.12);
+  padding: 4px 10px;
+  border-radius: 6px;
+  margin-bottom: 14px;
+}
+.name {
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.3px;
+  margin-bottom: 6px;
+}
+.desc {
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 18px;
+  min-height: 40px;
+}
+.sizes {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  padding: 22px 0;
+  background: linear-gradient(135deg, #1c1c20 0%, #09090B 100%);
+  border-radius: 14px;
+  border: 0.5px solid var(--border);
+}
+.sizes svg.lg { width: 120px; height: 120px; border-radius: 26px; }
+.sizes svg.md { width: 56px; height: 56px; border-radius: 12px; }
+.sizes svg.sm { width: 30px; height: 30px; border-radius: 6px; }
+.sizelabels {
+  display: flex; justify-content: center; gap: 28px;
+  color: var(--text3); font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+.context {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: var(--ink2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 8px;
+}
+.context svg { width: 34px; height: 34px; border-radius: 9px; }
+.context .meta { text-align: left; }
+.context .meta-name { font-weight: 800; font-size: 13px; }
+.context .meta-sub { color: var(--text2); font-size: 11px; margin-top: 2px; }
+.note {
+  text-align: center;
+  margin-top: 50px;
+  color: var(--text3);
+  font-size: 12px;
+  max-width: 560px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
+}
+</style>
+</head>
+<body>
+
+<h1>Minimal C + D</h1>
+<p class="lead">Refined to the bone. Each direction shown in 3 sub-variants — pick a code like "C2" or "D1" and I'll commit it as the real logo.</p>
+
+<!-- ════════════════ C — DIAGONAL CUT ════════════════ -->
+<div class="group-title">C · DIAGONAL CUT</div>
+<div class="grid">
+
+  <!-- C1: single tone + hairline diagonal cut -->
+  <div class="card">
+    <span class="tag">C1</span>
+    <div class="name">Single Tone + Cut</div>
+    <div class="desc">Just one mint tone, broken by a thin hairline cut. Almost nothing.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <line x1="0" y1="200" x2="200" y2="0" stroke="#052E1F" stroke-width="2.5"/>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <line x1="0" y1="200" x2="200" y2="0" stroke="#052E1F" stroke-width="2.5"/>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <line x1="0" y1="200" x2="200" y2="0" stroke="#052E1F" stroke-width="2.5"/>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#34D399"/><line x1="0" y1="200" x2="200" y2="0" stroke="#052E1F" stroke-width="2.5"/></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+  <!-- C2: two flat tones meeting cleanly, NO divider -->
+  <div class="card">
+    <span class="tag">C2</span>
+    <div class="name">Clean Two-Tone</div>
+    <div class="desc">Two flat shades of mint meeting at a clean diagonal. Zero decoration. Pure form.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#34D399"/><polygon points="200,0 200,200 0,200" fill="#10B981"/></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+  <!-- C3: dark + mint inverted (premium card vibe) -->
+  <div class="card">
+    <span class="tag">C3</span>
+    <div class="name">Dark + Mint</div>
+    <div class="desc">Inverted — most of the icon is dark, with a single mint triangle peeking through. Premium-card feel.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#0A1F18"/>
+        <polygon points="200,0 200,200 0,200" fill="#34D399"/>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#0A1F18"/>
+        <polygon points="200,0 200,200 0,200" fill="#34D399"/>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#0A1F18"/>
+        <polygon points="200,0 200,200 0,200" fill="#34D399"/>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#0A1F18"/><polygon points="200,0 200,200 0,200" fill="#34D399"/></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ════════════════ D — TWO HALVES ════════════════ -->
+<div class="group-title">D · TWO HALVES</div>
+<div class="grid">
+
+  <!-- D1: two simple overlapping rounded squares, no extras -->
+  <div class="card">
+    <span class="tag">D1</span>
+    <div class="name">Pure Overlap</div>
+    <div class="desc">Two clean rounded squares overlapping. The intersection becomes a soft middle tone — no extra marks.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#0A1F18"/>
+        <rect x="40" y="40" width="80" height="80" rx="20" fill="#6EE7B7"/>
+        <rect x="80" y="80" width="80" height="80" rx="20" fill="#10B981"/>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#0A1F18"/>
+        <rect x="40" y="40" width="80" height="80" rx="20" fill="#6EE7B7"/>
+        <rect x="80" y="80" width="80" height="80" rx="20" fill="#10B981"/>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#0A1F18"/>
+        <rect x="40" y="40" width="80" height="80" rx="20" fill="#6EE7B7"/>
+        <rect x="80" y="80" width="80" height="80" rx="20" fill="#10B981"/>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#0A1F18"/><rect x="40" y="40" width="80" height="80" rx="20" fill="#6EE7B7"/><rect x="80" y="80" width="80" height="80" rx="20" fill="#10B981"/></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+  <!-- D2: two circles overlapping -->
+  <div class="card">
+    <span class="tag">D2</span>
+    <div class="name">Two Circles</div>
+    <div class="desc">Same idea with circles — softer, friendlier silhouette. Slightly Venn-diagram coded (which fits "shared expenses").</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#0A1F18"/>
+        <circle cx="80" cy="100" r="46" fill="#6EE7B7"/>
+        <circle cx="120" cy="100" r="46" fill="#10B981" opacity="0.92"/>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#0A1F18"/>
+        <circle cx="80" cy="100" r="46" fill="#6EE7B7"/>
+        <circle cx="120" cy="100" r="46" fill="#10B981" opacity="0.92"/>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#0A1F18"/>
+        <circle cx="80" cy="100" r="46" fill="#6EE7B7"/>
+        <circle cx="120" cy="100" r="46" fill="#10B981" opacity="0.92"/>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#0A1F18"/><circle cx="80" cy="100" r="46" fill="#6EE7B7"/><circle cx="120" cy="100" r="46" fill="#10B981" opacity="0.92"/></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+  <!-- D3: mint on mint — two squares of slightly different mint tones on mint bg (most minimal) -->
+  <div class="card">
+    <span class="tag">D3</span>
+    <div class="name">Tone-on-Tone</div>
+    <div class="desc">Both halves are mint, just slightly different brightness. The icon is the mint background — only the overlap reads. Apple Wallet-level subtlety.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <rect x="40" y="40" width="80" height="80" rx="20" fill="#6EE7B7"/>
+        <rect x="80" y="80" width="80" height="80" rx="20" fill="#10B981"/>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <rect x="40" y="40" width="80" height="80" rx="20" fill="#6EE7B7"/>
+        <rect x="80" y="80" width="80" height="80" rx="20" fill="#10B981"/>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <rect x="40" y="40" width="80" height="80" rx="20" fill="#6EE7B7"/>
+        <rect x="80" y="80" width="80" height="80" rx="20" fill="#10B981"/>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#34D399"/><rect x="40" y="40" width="80" height="80" rx="20" fill="#6EE7B7"/><rect x="80" y="80" width="80" height="80" rx="20" fill="#10B981"/></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+</div>
+
+<p class="note">
+  Six minimal variants — three takes on the diagonal cut, three takes on the overlap. Each shown at 1024 / 180 / 120 px plus a wordmark preview.
+  <br><br>
+  Tell me a code like <b>C2</b> or <b>D1</b> and I'll commit it as the real <code>preview/logo.svg</code> + update the mockup + tell you how to drop it into the iOS app icon set.
+</p>
+
+</body>
+</html>

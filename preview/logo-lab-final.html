@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>SplitWise — Bolt-Cut + Arrows refined</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #09090B;
+  --ink: #111114;
+  --ink2: #18181B;
+  --border: #26262C;
+  --mint: #34D399;
+  --mintBright: #6EE7B7;
+  --mintDeep: #10B981;
+  --mintInk: #052E1F;
+  --text: #FAFAFA;
+  --text2: #A1A1AA;
+  --text3: #71717A;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  font-family: 'Inter', -apple-system, sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  padding: 60px 40px;
+}
+h1 {
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: -1px;
+  font-size: 30px;
+  margin: 0 0 8px;
+}
+.lead {
+  text-align: center;
+  color: var(--text2);
+  margin: 0 0 50px;
+  font-weight: 500;
+  font-size: 14px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.5;
+}
+.group-title {
+  text-align: center;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  color: var(--text3);
+  margin: 60px 0 22px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.card {
+  background: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  padding: 24px;
+  text-align: center;
+}
+.tag {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--mint);
+  background: rgba(52,211,153,0.12);
+  padding: 4px 10px;
+  border-radius: 6px;
+  margin-bottom: 14px;
+}
+.name {
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: -0.3px;
+  margin-bottom: 6px;
+}
+.desc {
+  color: var(--text2);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 18px;
+  min-height: 56px;
+}
+.sizes {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  padding: 22px 0;
+  background: linear-gradient(135deg, #1c1c20 0%, #09090B 100%);
+  border-radius: 14px;
+  border: 0.5px solid var(--border);
+}
+.sizes svg.lg { width: 130px; height: 130px; border-radius: 28px; }
+.sizes svg.md { width: 60px; height: 60px; border-radius: 13px; }
+.sizes svg.sm { width: 32px; height: 32px; border-radius: 7px; }
+.sizelabels {
+  display: flex; justify-content: center; gap: 28px;
+  color: var(--text3); font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+.context {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: var(--ink2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-top: 8px;
+}
+.context svg { width: 34px; height: 34px; border-radius: 9px; }
+.context .meta { text-align: left; }
+.context .meta-name { font-weight: 800; font-size: 13px; }
+.context .meta-sub { color: var(--text2); font-size: 11px; margin-top: 2px; }
+.note {
+  text-align: center;
+  margin-top: 50px;
+  color: var(--text3);
+  font-size: 12px;
+  max-width: 580px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
+}
+</style>
+</head>
+<body>
+
+<h1>Bolt-Cut + Arrows · polished</h1>
+<p class="lead">Three sub-variants of each. Codes look like <b>B1</b>, <b>B2</b>, <b>A1</b>, <b>A2</b>. Tell me one and I'll lock it in.</p>
+
+<!-- ═══════════════ BOLT-CUT ═══════════════ -->
+<div class="group-title">B · BOLT-AS-CUT  (the lightning IS the split)</div>
+<div class="grid">
+
+  <!-- B1: sharp / thin bolt -->
+  <div class="card">
+    <span class="tag">B1</span>
+    <div class="name">Sharp</div>
+    <div class="desc">Thin, aggressive zigzag — fast, programmer-y. The bolt cuts cleanly through with sharp internal angles.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <path d="M 200 0 L 130 0 L 95 80 L 130 80 L 70 200 L 200 200 Z" fill="#10B981"/>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <path d="M 200 0 L 130 0 L 95 80 L 130 80 L 70 200 L 200 200 Z" fill="#10B981"/>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <path d="M 200 0 L 130 0 L 95 80 L 130 80 L 70 200 L 200 200 Z" fill="#10B981"/>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#34D399"/><path d="M 200 0 L 130 0 L 95 80 L 130 80 L 70 200 L 200 200 Z" fill="#10B981"/></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+  <!-- B2: chunky / balanced bolt -->
+  <div class="card">
+    <span class="tag">B2</span>
+    <div class="name">Balanced</div>
+    <div class="desc">Wider bolt with a longer middle stretch — reads better at icon-tiny sizes. My pick for legibility.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <path d="M 200 0 L 110 0 L 75 90 L 125 90 L 50 200 L 200 200 Z" fill="#10B981"/>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <path d="M 200 0 L 110 0 L 75 90 L 125 90 L 50 200 L 200 200 Z" fill="#10B981"/>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <path d="M 200 0 L 110 0 L 75 90 L 125 90 L 50 200 L 200 200 Z" fill="#10B981"/>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#34D399"/><path d="M 200 0 L 110 0 L 75 90 L 125 90 L 50 200 L 200 200 Z" fill="#10B981"/></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+  <!-- B3: bolt-as-cut on dark ground, mint bolt -->
+  <div class="card">
+    <span class="tag">B3</span>
+    <div class="name">Inverted (Dark)</div>
+    <div class="desc">Dark mint ground, bright bolt — same shape, premium-card flip. Stands out more in a row of pastel app icons.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#0A1F18"/>
+        <path d="M 200 0 L 110 0 L 75 90 L 125 90 L 50 200 L 200 200 Z" fill="#34D399"/>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#0A1F18"/>
+        <path d="M 200 0 L 110 0 L 75 90 L 125 90 L 50 200 L 200 200 Z" fill="#34D399"/>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#0A1F18"/>
+        <path d="M 200 0 L 110 0 L 75 90 L 125 90 L 50 200 L 200 200 Z" fill="#34D399"/>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#0A1F18"/><path d="M 200 0 L 110 0 L 75 90 L 125 90 L 50 200 L 200 200 Z" fill="#34D399"/></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════ ARROWS ═══════════════ -->
+<div class="group-title">A · ARROWS  (financial exchange)</div>
+<div class="grid">
+
+  <!-- A1: vertical exchange (up + down side by side) -->
+  <div class="card">
+    <span class="tag">A1</span>
+    <div class="name">Vertical Exchange</div>
+    <div class="desc">Two arrows side by side — one paying out, one receiving. Pure financial-exchange semantics. Cash-App/Revolut-style.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <g fill="#052E1F">
+          <!-- up arrow -->
+          <rect x="68" y="64" width="16" height="80" rx="2"/>
+          <polygon points="58,76 76,52 94,76"/>
+          <!-- down arrow -->
+          <rect x="116" y="56" width="16" height="80" rx="2"/>
+          <polygon points="106,124 124,148 142,124"/>
+        </g>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <g fill="#052E1F">
+          <rect x="68" y="64" width="16" height="80" rx="2"/>
+          <polygon points="58,76 76,52 94,76"/>
+          <rect x="116" y="56" width="16" height="80" rx="2"/>
+          <polygon points="106,124 124,148 142,124"/>
+        </g>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <g fill="#052E1F">
+          <rect x="68" y="64" width="16" height="80" rx="2"/>
+          <polygon points="58,76 76,52 94,76"/>
+          <rect x="116" y="56" width="16" height="80" rx="2"/>
+          <polygon points="106,124 124,148 142,124"/>
+        </g>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#34D399"/><polygon points="200,0 200,200 0,200" fill="#10B981"/><g fill="#052E1F"><rect x="68" y="64" width="16" height="80" rx="2"/><polygon points="58,76 76,52 94,76"/><rect x="116" y="56" width="16" height="80" rx="2"/><polygon points="106,124 124,148 142,124"/></g></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+  <!-- A2: chevrons along the diagonal — feels like the cut moves -->
+  <div class="card">
+    <span class="tag">A2</span>
+    <div class="name">Flow Chevrons</div>
+    <div class="desc">Two chevrons crossing the diagonal — money flowing both ways across the cut. Implies motion / settlement.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <g fill="none" stroke="#052E1F" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="60,75 90,55 120,75"/>
+          <polyline points="140,125 110,145 80,125"/>
+        </g>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <g fill="none" stroke="#052E1F" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="60,75 90,55 120,75"/>
+          <polyline points="140,125 110,145 80,125"/>
+        </g>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <g fill="none" stroke="#052E1F" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="60,75 90,55 120,75"/>
+          <polyline points="140,125 110,145 80,125"/>
+        </g>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#34D399"/><polygon points="200,0 200,200 0,200" fill="#10B981"/><g fill="none" stroke="#052E1F" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"><polyline points="60,75 90,55 120,75"/><polyline points="140,125 110,145 80,125"/></g></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+  <!-- A3: arrows curving across the diagonal — soft exchange -->
+  <div class="card">
+    <span class="tag">A3</span>
+    <div class="name">Curved Exchange</div>
+    <div class="desc">Two curved arrows crossing the diagonal — softer, more "transfer" energy. Less aggressive than the straight arrows.</div>
+    <div class="sizes">
+      <svg class="lg" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <g fill="none" stroke="#052E1F" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">
+          <!-- top curved arrow (right -> left, slightly tilted) -->
+          <path d="M 140 60 Q 100 50 60 80"/>
+          <polyline points="56,66 60,80 74,76"/>
+          <!-- bottom curved arrow (left -> right) -->
+          <path d="M 60 140 Q 100 150 140 120"/>
+          <polyline points="144,134 140,120 126,124"/>
+        </g>
+      </svg>
+      <svg class="md" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <g fill="none" stroke="#052E1F" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M 140 60 Q 100 50 60 80"/>
+          <polyline points="56,66 60,80 74,76"/>
+          <path d="M 60 140 Q 100 150 140 120"/>
+          <polyline points="144,134 140,120 126,124"/>
+        </g>
+      </svg>
+      <svg class="sm" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#34D399"/>
+        <polygon points="200,0 200,200 0,200" fill="#10B981"/>
+        <g fill="none" stroke="#052E1F" stroke-width="13" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M 140 60 Q 100 50 60 80"/>
+          <polyline points="56,66 60,80 74,76"/>
+          <path d="M 60 140 Q 100 150 140 120"/>
+          <polyline points="144,134 140,120 126,124"/>
+        </g>
+      </svg>
+    </div>
+    <div class="sizelabels"><span>1024</span><span>180</span><span>120</span></div>
+    <div class="context">
+      <svg viewBox="0 0 200 200"><rect width="200" height="200" fill="#34D399"/><polygon points="200,0 200,200 0,200" fill="#10B981"/><g fill="none" stroke="#052E1F" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"><path d="M 140 60 Q 100 50 60 80"/><polyline points="56,66 60,80 74,76"/><path d="M 60 140 Q 100 150 140 120"/><polyline points="144,134 140,120 126,124"/></g></svg>
+      <div class="meta"><div class="meta-name">SplitWise</div><div class="meta-sub">Solo spending</div></div>
+    </div>
+  </div>
+
+</div>
+
+<p class="note">
+  Tell me a code (<b>B1</b>, <b>B2</b>, <b>B3</b>, <b>A1</b>, <b>A2</b>, <b>A3</b>) and I'll commit it as the real <code>logo.svg</code>, regenerate the home-screen mockup with it, and write the iOS icon export script.
+</p>
+
+</body>
+</html>
