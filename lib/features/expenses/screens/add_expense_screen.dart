@@ -56,6 +56,23 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     super.initState();
     _voice.initialize();
     _paidByUserId = supabase.auth.currentUser?.id;
+
+    // For personal groups, auto-include the current user as the sole
+    // participant so submit doesn't fail the "select at least one" check.
+    // The form will hide the split UI in this case (see build()).
+    final myId = supabase.auth.currentUser?.id;
+    if (myId != null) _participantIds.add(myId);
+  }
+
+  /// True if the group we're adding to is the user's auto-created personal
+  /// group. Read off the groups cache rather than refetched — by the time
+  /// we get here, groupsProvider is populated (we navigated from there).
+  bool _isPersonalGroup(WidgetRef ref) {
+    final groups = ref.watch(groupsProvider).value ?? const [];
+    for (final g in groups) {
+      if (g.id == widget.groupId) return g.isPersonal;
+    }
+    return false;
   }
 
   @override
@@ -507,7 +524,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
       child: Scaffold(
         backgroundColor: AppTheme.black,
         appBar: AppBar(
-          title: const Text('Add Expense'),
+          title: Text(_isPersonalGroup(ref) ? 'Log Expense' : 'Add Expense'),
           actions: [
             IconButton(
               icon: const Icon(Icons.document_scanner_outlined),
@@ -619,6 +636,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             ),
             const SizedBox(height: 20),
 
+            // For personal groups (only the user is a member), "who paid",
+            // "split type" and "split with" are meaningless — hide them and
+            // submit silently with paid_by = me / participant = me.
+            if (!_isPersonalGroup(ref)) ...[
+
             // ── Paid by ──────────────────────────────────────
             _SectionLabel(label: 'Paid by'),
             const SizedBox(height: 10),
@@ -689,6 +711,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   );
                 }).toList(),
               ),
+
+            ], // end !_isPersonalGroup block
 
             // ── Receipt items preview ────────────────────────
             if (_receiptItems.isNotEmpty) ...[
