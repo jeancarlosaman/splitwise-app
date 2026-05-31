@@ -7,6 +7,8 @@ import '../../../shared/repositories/profiles_repository.dart';
 import '../../../shared/repositories/supabase_client.dart';
 import '../../auth/models/app_user.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../subscription/quota_service.dart';
+import '../../subscription/screens/paywall_sheet.dart';
 
 /// Loads the current user's full profile (including payment tags). We can't
 /// rely on supabase.auth.currentUser here because that only has the auth row,
@@ -124,6 +126,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           return ListView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
             children: [
+              // ── Subscription card at the top — it's the highest-value
+              //     piece of info on this screen. ─────────────────────────
+              _SubscriptionCard(user: user),
+              const SizedBox(height: 28),
+
               _SectionHeader(label: 'Account'),
               const SizedBox(height: 10),
               _LabeledField(
@@ -230,6 +237,262 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       );
+}
+
+// ── Subscription card ─────────────────────────────────────────────────────
+class _SubscriptionCard extends ConsumerWidget {
+  final AppUser user;
+  const _SubscriptionCard({required this.user});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final isPro = user.isPro;
+    final ocrQuota = ref.watch(quotaStateProvider(QuotaFeature.ocrScan));
+    final voiceQuota = ref.watch(quotaStateProvider(QuotaFeature.voiceParse));
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 14, 16),
+      decoration: BoxDecoration(
+        gradient: isPro
+            ? AppTheme.mintTintGradient
+            : AppTheme.cardGradient,
+        borderRadius: const BorderRadius.all(AppTheme.radiusLg),
+        border: Border.all(
+            color: isPro
+                ? AppTheme.mint.withValues(alpha: 0.35)
+                : AppTheme.border,
+            width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  gradient: AppTheme.mintGradient,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: isPro
+                      ? const [
+                          BoxShadow(
+                              color: AppTheme.mintGlow,
+                              blurRadius: 18,
+                              offset: Offset(0, 6)),
+                        ]
+                      : null,
+                ),
+                child: const Icon(Icons.bolt_rounded,
+                    color: Color(0xFF052E1F), size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text('SplitWise',
+                            style: TextStyle(
+                                color: AppTheme.textPrimary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.2)),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isPro
+                                ? AppTheme.mint
+                                : AppTheme.ink3,
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: Text(isPro ? 'PRO' : 'FREE',
+                              style: TextStyle(
+                                  color: isPro
+                                      ? const Color(0xFF052E1F)
+                                      : AppTheme.textSecondary,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.2)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isPro
+                          ? 'Unlimited AI · €2.99 / mo'
+                          : '5 scans + 5 voice notes per month',
+                      style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+              if (!isPro)
+                Material(
+                  color: AppTheme.mint,
+                  borderRadius: BorderRadius.circular(10),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(10),
+                    onTap: () =>
+                        showPaywallSheet(context: context, ref: ref),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      child: const Text('Upgrade',
+                          style: TextStyle(
+                              color: Color(0xFF052E1F),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                              letterSpacing: -0.1)),
+                    ),
+                  ),
+                )
+              else
+                _SubscriptionMenuButton(),
+            ],
+          ),
+
+          // Usage rows — only shown for free users (pro is unlimited).
+          if (!isPro) ...[
+            const SizedBox(height: 16),
+            _UsageRow(
+              icon: Icons.receipt_long_rounded,
+              label: 'Receipt scans',
+              quota: ocrQuota.value,
+              feature: QuotaFeature.ocrScan,
+            ),
+            const SizedBox(height: 10),
+            _UsageRow(
+              icon: Icons.mic_rounded,
+              label: 'Voice notes',
+              quota: voiceQuota.value,
+              feature: QuotaFeature.voiceParse,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _UsageRow extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final QuotaState? quota;
+  final QuotaFeature feature;
+  const _UsageRow({
+    required this.icon,
+    required this.label,
+    required this.quota,
+    required this.feature,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final used = quota?.usedThisMonth ?? 0;
+    final limit = feature.monthlyLimit;
+    final pct = limit == 0 ? 0.0 : (used / limit).clamp(0.0, 1.0);
+    final exceeded = used >= limit;
+    final barColor = exceeded ? AppTheme.negative : AppTheme.mint;
+
+    return Row(
+      children: [
+        Icon(icon, color: AppTheme.textSecondary, size: 16),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Text(label,
+                      style: const TextStyle(
+                          color: AppTheme.textPrimary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600)),
+                  const Spacer(),
+                  Text('$used / $limit',
+                      style: TextStyle(
+                          color: exceeded
+                              ? AppTheme.negative
+                              : AppTheme.textSecondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: LinearProgressIndicator(
+                  value: pct,
+                  minHeight: 4,
+                  backgroundColor: AppTheme.ink3,
+                  valueColor: AlwaysStoppedAnimation(barColor),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SubscriptionMenuButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return IconButton(
+      icon: const Icon(Icons.more_horiz_rounded,
+          color: AppTheme.textSecondary),
+      onPressed: () async {
+        final action = await showModalBottomSheet<String>(
+          context: context,
+          backgroundColor: AppTheme.ink,
+          shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+          builder: (ctx) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                    width: 36,
+                    height: 4,
+                    decoration: BoxDecoration(
+                        color: AppTheme.borderStrong,
+                        borderRadius: BorderRadius.circular(2))),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.cancel_rounded,
+                      color: AppTheme.negative),
+                  title: const Text('Cancel Pro (test)',
+                      style: TextStyle(color: AppTheme.textPrimary)),
+                  subtitle: const Text(
+                      'Returns to the free tier — for testing the gating flow.',
+                      style: TextStyle(color: AppTheme.textTertiary)),
+                  onTap: () => Navigator.pop(ctx, 'downgrade'),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+        if (action == 'downgrade') {
+          await ref.read(quotaServiceProvider).devDowngrade();
+          ref.invalidate(currentProfileProvider);
+          for (final f in QuotaFeature.values) {
+            ref.invalidate(quotaStateProvider(f));
+          }
+        }
+      },
+    );
+  }
 }
 
 class _SectionHeader extends StatelessWidget {

@@ -11,6 +11,8 @@ import '../../ocr/receipt_scanner.dart';
 import '../../ocr/screens/receipt_review_screen.dart';
 import '../../voice/voice_recorder.dart';
 import '../../voice/ai_expense_parser.dart';
+import '../../subscription/quota_service.dart';
+import '../../subscription/screens/paywall_sheet.dart';
 import '../../../shared/repositories/supabase_client.dart';
 import '../../../shared/repositories/expenses_repository.dart';
 import '../../../shared/widgets/loading_overlay.dart';
@@ -63,6 +65,16 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
   // ── OCR flow ──────────────────────────────────────────────────────────────
   Future<void> _scanReceipt({bool fromGallery = false}) async {
+    // Quota check BEFORE prompting the camera — no point making the user
+    // capture an image we're about to refuse to process.
+    final quota = ref.read(quotaServiceProvider);
+    final preCheck = await quota.check(QuotaFeature.ocrScan);
+    if (!preCheck.canUse && mounted) {
+      await showPaywallSheet(
+          context: context, ref: ref, triggeredBy: QuotaFeature.ocrScan);
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final parsed = fromGallery
@@ -75,6 +87,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             content: Text('No items detected — try a clearer photo.')));
         return;
       }
+
+      // Successful scan — log usage so the quota counter updates.
+      await quota.record(QuotaFeature.ocrScan);
+      ref.invalidate(quotaStateProvider(QuotaFeature.ocrScan));
 
       final members = ref.read(groupMembersProvider(widget.groupId)).value ?? [];
 
@@ -145,6 +161,15 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   }
 
   Future<void> _applyVoiceResultWithAi(String transcript) async {
+    // Quota check BEFORE the (paid) Claude API call.
+    final quota = ref.read(quotaServiceProvider);
+    final preCheck = await quota.check(QuotaFeature.voiceParse);
+    if (!preCheck.canUse && mounted) {
+      await showPaywallSheet(
+          context: context, ref: ref, triggeredBy: QuotaFeature.voiceParse);
+      return;
+    }
+
     if (transcript.trim().isEmpty) {
       if (mounted) {
         // Give the user actionable diagnostics instead of just "no speech".
@@ -189,6 +214,11 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
 
     // Always keep the transcript visible so the user can see what was heard.
     _voiceTranscript = transcript;
+
+    // Count this against the quota — even isEmpty AI responses count, because
+    // they still cost a Claude API call.
+    await quota.record(QuotaFeature.voiceParse);
+    ref.invalidate(quotaStateProvider(QuotaFeature.voiceParse));
 
     if (parsed.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(

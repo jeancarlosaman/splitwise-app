@@ -13,6 +13,12 @@ class AppUser {
   /// settlements because Bizum has no public deep-link.
   final String? bizumPhone;
 
+  /// 'free' (default) or 'pro'. Use [isPro] which also respects [proUntil].
+  final String subscriptionTier;
+
+  /// When the pro grant lapses. Null while free, or set in the future while pro.
+  final DateTime? proUntil;
+
   const AppUser({
     required this.id,
     required this.email,
@@ -21,7 +27,15 @@ class AppUser {
     required this.createdAt,
     this.revolutTag,
     this.bizumPhone,
+    this.subscriptionTier = 'free',
+    this.proUntil,
   });
+
+  /// True while the user has an active Pro subscription (tier=pro AND
+  /// expiry is in the future or unset).
+  bool get isPro =>
+      subscriptionTier == 'pro' &&
+      (proUntil == null || proUntil!.isAfter(DateTime.now()));
 
   factory AppUser.fromJson(Map<String, dynamic> json) => AppUser(
         id: json['id'] as String,
@@ -37,6 +51,11 @@ class AppUser {
         bizumPhone: (json['bizum_phone'] as String?)?.trim().isEmpty == true
             ? null
             : json['bizum_phone'] as String?,
+        subscriptionTier:
+            (json['subscription_tier'] as String?) ?? 'free',
+        proUntil: json['pro_until'] != null
+            ? DateTime.parse(json['pro_until'] as String)
+            : null,
       );
 
   bool get hasAnyPaymentMethod => revolutTag != null || bizumPhone != null;

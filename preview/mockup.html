@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>SplitWise — Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #09090B;
+  --ink: #111114;
+  --ink2: #18181B;
+  --ink3: #26262C;
+  --border: #26262C;
+  --borderStrong: #3F3F46;
+  --mint: #34D399;
+  --mintBright: #6EE7B7;
+  --mintDeep: #10B981;
+  --mintTint: #0A1F18;
+  --mintGlow: rgba(52, 211, 153, 0.25);
+  --negative: #F87171;
+  --negativeTint: #1F0A0A;
+  --text: #FAFAFA;
+  --text2: #A1A1AA;
+  --text3: #71717A;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: linear-gradient(135deg, #1c1c20 0%, #09090B 100%);
+  font-family: 'Inter', -apple-system, sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  padding: 60px 40px;
+}
+
+.page-title {
+  text-align: center;
+  font-weight: 800;
+  letter-spacing: -1px;
+  font-size: 38px;
+  margin: 0 0 10px;
+}
+.page-sub {
+  text-align: center;
+  color: var(--text2);
+  font-weight: 500;
+  margin: 0 0 50px;
+  font-size: 15px;
+}
+
+.lab {
+  display: flex;
+  gap: 60px;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+/* ─── iPhone frame ─────────────────────────────────────────────── */
+.phone {
+  position: relative;
+  width: 390px;
+  height: 844px;
+  border-radius: 56px;
+  background: #000;
+  padding: 8px;
+  box-shadow:
+    0 0 0 2px #222 inset,
+    0 0 0 12px #111,
+    0 60px 100px -30px rgba(0,0,0,0.7),
+    0 30px 60px -20px rgba(52,211,153,0.05);
+}
+.screen {
+  width: 100%;
+  height: 100%;
+  border-radius: 48px;
+  background: var(--bg);
+  overflow: hidden;
+  position: relative;
+  font-feature-settings: 'tnum' 1;
+}
+.notch {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 32px;
+  background: #000;
+  border-radius: 18px;
+  z-index: 50;
+}
+.status {
+  position: absolute;
+  top: 18px;
+  left: 0;
+  right: 0;
+  padding: 0 30px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  z-index: 40;
+}
+.status .right { display: flex; gap: 6px; align-items: center; }
+.status svg { width: 16px; height: 16px; }
+
+.phone-label {
+  text-align: center;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  margin-top: 18px;
+}
+
+/* ─── App bar ──────────────────────────────────────────────────── */
+.app-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 66px 20px 8px;
+}
+.logo-mini {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: linear-gradient(135deg, var(--mintBright), var(--mintDeep));
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 16px; color: #052E1F;
+}
+.app-name {
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.4px;
+}
+.app-bar .spacer { flex: 1; }
+.chip {
+  width: 38px; height: 38px;
+  background: var(--ink2);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text2);
+  margin-left: 8px;
+}
+.chip svg { width: 17px; height: 17px; }
+
+/* ─── Hero card ────────────────────────────────────────────────── */
+.hero {
+  margin: 14px 16px 16px;
+  padding: 22px;
+  border-radius: 28px;
+  background: linear-gradient(180deg, #143228, #111114);
+  border: 1px solid rgba(52,211,153,0.25);
+}
+.hero-label-row { display: flex; align-items: center; }
+.hero-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mint); margin-right: 8px; }
+.hero-label { font-size: 11px; font-weight: 700; letter-spacing: 1.4px; color: var(--text2); }
+.hero-settle {
+  margin-left: auto;
+  background: rgba(52,211,153,0.18);
+  color: var(--mint);
+  font-size: 11px; font-weight: 800;
+  padding: 4px 8px;
+  border-radius: 8px;
+  display: flex; gap: 2px; align-items: center;
+  letter-spacing: 0.2px;
+}
+.hero-amount {
+  font-size: 38px; font-weight: 800; color: var(--mint);
+  letter-spacing: -1.5px;
+  margin-top: 14px;
+}
+.hero-sub {
+  margin-top: 18px;
+  display: flex;
+  background: rgba(0,0,0,0.25);
+  border: 0.5px solid rgba(255,255,255,0.04);
+  border-radius: 16px;
+  padding: 12px 14px;
+}
+.hero-sub > div { flex: 1; padding: 0 6px; }
+.hero-sub .divider { flex: 0; width: 1px; background: rgba(255,255,255,0.06); padding: 0; }
+.hero-sub-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: var(--text3); }
+.hero-sub-amt { font-size: 15px; font-weight: 800; margin-top: 4px; }
+.hero-sub.right { text-align: right; }
+.amt-neg { color: var(--negative); }
+.amt-pos { color: var(--mint); }
+
+/* ─── Personal card ────────────────────────────────────────────── */
+.personal {
+  margin: 0 16px 6px;
+  background: linear-gradient(180deg, #143228, #111114);
+  border: 1px solid rgba(52,211,153,0.25);
+  border-radius: 22px;
+  padding: 18px;
+  display: flex; align-items: center; gap: 16px;
+}
+.personal-ico {
+  width: 52px; height: 52px;
+  border-radius: 15px;
+  background: linear-gradient(135deg, var(--mintBright), var(--mintDeep));
+  box-shadow: 0 4px 18px var(--mintGlow);
+  display: flex; align-items: center; justify-content: center;
+  color: #052E1F;
+}
+.personal-ico svg { width: 26px; height: 26px; }
+.personal-title { font-weight: 800; font-size: 17px; letter-spacing: -0.3px; }
+.personal-sub { color: var(--text2); font-size: 13px; font-weight: 500; margin-top: 3px; }
+.personal-arrow {
+  margin-left: auto;
+  background: rgba(0,0,0,0.2);
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--mint);
+}
+.personal-arrow svg { width: 16px; height: 16px; }
+
+/* ─── Section label ────────────────────────────────────────────── */
+.section {
+  display: flex;
+  padding: 20px 22px 10px;
+  align-items: center;
+}
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: var(--text3);
+}
+.section-count {
+  margin-left: auto;
+  background: var(--ink2);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text2);
+}
+
+/* ─── Group cards ──────────────────────────────────────────────── */
+.group {
+  margin: 0 16px 10px;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--ink2), var(--ink));
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  display: flex; align-items: center; gap: 14px;
+}
+.group-emoji {
+  width: 50px; height: 50px;
+  background: var(--ink2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+}
+.group-name { font-weight: 700; font-size: 16px; letter-spacing: -0.2px; }
+.group-sub { font-size: 12px; color: var(--text3); font-weight: 500; margin-top: 2px; }
+.group .chev { margin-left: auto; color: var(--text3); }
+
+/* ─── FAB ──────────────────────────────────────────────────────── */
+.fab {
+  position: absolute;
+  bottom: 30px;
+  right: 24px;
+  padding: 14px 22px;
+  border-radius: 30px;
+  background: linear-gradient(135deg, var(--mintBright), var(--mintDeep));
+  box-shadow: 0 12px 30px var(--mintGlow);
+  display: flex; align-items: center; gap: 8px;
+  color: #052E1F;
+  font-weight: 700;
+  letter-spacing: -0.1px;
+  font-size: 14px;
+}
+
+/* ─── Paywall ──────────────────────────────────────────────────── */
+.paywall {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.paywall-sheet {
+  width: 100%;
+  background: var(--ink);
+  border-radius: 28px 28px 0 0;
+  padding: 14px 20px 24px;
+  border-top: 1px solid var(--border);
+}
+.handle {
+  width: 36px; height: 4px;
+  background: var(--borderStrong);
+  border-radius: 2px;
+  margin: 0 auto 22px;
+}
+.pay-logo {
+  width: 76px; height: 76px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, var(--mintBright), var(--mintDeep));
+  box-shadow: 0 10px 28px var(--mintGlow);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto;
+  color: #052E1F;
+}
+.pay-logo svg { width: 38px; height: 38px; }
+.pay-title {
+  text-align: center;
+  font-size: 26px; font-weight: 800;
+  letter-spacing: -0.6px;
+  margin: 18px 0 6px;
+}
+.pay-sub {
+  text-align: center;
+  color: var(--text2);
+  font-size: 14px;
+  margin-bottom: 26px;
+  line-height: 1.4;
+}
+.pay-benefit {
+  display: flex; gap: 14px;
+  margin-bottom: 14px;
+  align-items: flex-start;
+}
+.bn-icon {
+  width: 38px; height: 38px;
+  border-radius: 11px;
+  background: var(--mintTint);
+  border: 1px solid rgba(52,211,153,0.3);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--mint);
+  flex-shrink: 0;
+}
+.bn-icon svg { width: 19px; height: 19px; }
+.bn-title { font-weight: 700; font-size: 14px; }
+.bn-sub { color: var(--text2); font-size: 12px; line-height: 1.35; margin-top: 2px; }
+
+.price-card {
+  margin-top: 8px;
+  padding: 14px 16px;
+  background: linear-gradient(180deg, #143228, #111114);
+  border: 1px solid rgba(52,211,153,0.3);
+  border-radius: 22px;
+}
+.price-row {
+  display: flex; align-items: baseline; gap: 4px;
+}
+.tag {
+  background: var(--mint);
+  color: #052E1F;
+  font-weight: 800;
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  align-self: center;
+  margin-right: auto;
+}
+.price-big { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+.price-sm { color: var(--text2); font-size: 13px; font-weight: 600; }
+.cta-btn {
+  margin-top: 12px;
+  height: 50px;
+  background: var(--mint);
+  border-radius: 14px;
+  color: #052E1F;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: -0.1px;
+  display: flex; align-items: center; justify-content: center;
+}
+.maybe-later {
+  text-align: center;
+  color: var(--text3);
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 12px;
+}
+
+/* ─── Settle screen ─────────────────────────────────────────── */
+.app-bar.simple {
+  padding: 66px 16px 8px;
+  display: flex; align-items: center;
+}
+.back-btn {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: var(--ink2);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text);
+  margin-right: 12px;
+}
+.back-btn svg { width: 18px; height: 18px; }
+.settle-title { font-weight: 800; font-size: 18px; letter-spacing: -0.3px; }
+
+.net-card {
+  margin: 14px 16px 20px;
+  padding: 18px;
+  background: linear-gradient(135deg, var(--ink2), var(--ink));
+  border: 1px solid var(--border);
+  border-radius: 22px;
+}
+.net-label { color: var(--text2); font-size: 11px; font-weight: 700; letter-spacing: 0.5px; }
+.net-amount { font-size: 28px; font-weight: 800; color: var(--negative); letter-spacing: -0.5px; margin-top: 4px; }
+.net-row { display: flex; margin-top: 16px; }
+.net-cell { flex: 1; padding: 0 8px; }
+.net-cell-label { font-size: 10px; color: var(--text3); font-weight: 700; letter-spacing: 1px; display: flex; align-items: center; gap: 6px; }
+.dot { width: 6px; height: 6px; border-radius: 50%; }
+.net-cell-amt { font-size: 16px; font-weight: 800; margin-top: 4px; }
+.net-cell-sub { color: var(--text3); font-size: 11px; }
+
+.settle-section { padding: 0 20px 4px; font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 1px; }
+
+.settle-row {
+  margin: 0 16px 8px;
+  padding: 14px;
+  background: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  display: flex; align-items: center; gap: 12px;
+}
+.settle-ico {
+  width: 42px; height: 42px;
+  border-radius: 12px;
+  background: rgba(248,113,113,0.15);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--negative);
+}
+.settle-ico svg { width: 20px; height: 20px; }
+.settle-ico.pos { background: rgba(52,211,153,0.15); color: var(--mint); }
+.settle-name { font-size: 13px; color: var(--text2); }
+.settle-name b { color: var(--text); font-weight: 700; font-size: 15px; }
+.settle-grp { font-size: 12px; color: var(--text2); margin-top: 2px; display: flex; gap: 4px; align-items: center; }
+.settle-amt { font-weight: 800; font-size: 16px; }
+.settle-amt.neg { color: var(--negative); }
+.settle-amt.pos { color: var(--mint); }
+.pay-pill {
+  background: var(--mint);
+  color: #052E1F;
+  font-weight: 800;
+  font-size: 12px;
+  border-radius: 10px;
+  padding: 6px 12px;
+  margin-top: 6px;
+}
+.received-pill {
+  background: var(--ink);
+  border: 0.5px solid var(--border);
+  color: var(--text);
+  font-weight: 800;
+  font-size: 12px;
+  border-radius: 10px;
+  padding: 6px 12px;
+  margin-top: 6px;
+}
+
+.bottom-bar {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 134px;
+  height: 5px;
+  background: rgba(255,255,255,0.4);
+  border-radius: 3px;
+}
+
+/* ─── Logo card ────────────────────────────────────────────────── */
+.logo-card {
+  width: 220px;
+  text-align: center;
+}
+.logo-big {
+  width: 200px; height: 200px;
+  border-radius: 44px;
+  margin: 0 auto;
+  box-shadow:
+    0 20px 50px rgba(52,211,153,0.25),
+    0 0 0 1px rgba(255,255,255,0.05) inset;
+}
+.logo-grid {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 18px;
+}
+.logo-grid .logo-big.s60 { width: 60px; height: 60px; border-radius: 14px; }
+.logo-grid .logo-big.s40 { width: 40px; height: 40px; border-radius: 9px; }
+.logo-cap {
+  margin-top: 12px;
+  color: var(--text2);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+@media (max-width: 900px) {
+  body { padding: 30px 16px; }
+  .lab { gap: 40px; }
+  .phone { transform: scale(0.85); transform-origin: top center; }
+}
+</style>
+</head>
+<body>
+
+<h1 class="page-title">SplitWise</h1>
+<p class="page-sub">Premium dark fintech preview · Inter typography · refined mint palette</p>
+
+<div class="lab">
+
+  <!-- ═════════════ LOGO ═════════════ -->
+  <div class="logo-card">
+    <img class="logo-big" src="logo.svg" alt="SplitWise logo"/>
+    <div class="logo-grid">
+      <img class="logo-big s60" src="logo.svg" alt=""/>
+      <img class="logo-big s40" src="logo.svg" alt=""/>
+    </div>
+    <div class="logo-cap">App icon · 1024 · 180 · 120</div>
+  </div>
+
+  <!-- ═════════════ HOME ═════════════ -->
+  <div>
+  <div class="phone">
+    <div class="screen">
+      <div class="notch"></div>
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 8h2v8H2zM6 6h2v10H6zM10 4h2v12h-2zM14 2h2v14h-2zM18 5h2v11h-2z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 2.7 6.8 2 11l10 10 10-10c-.7-4.2-5-7-10-7z" fill-opacity="0.5"/></svg>
+          <span>74</span>
+        </span>
+      </div>
+
+      <div class="app-bar">
+        <div class="logo-mini">S</div>
+        <div class="app-name">SplitWise</div>
+        <div class="spacer"></div>
+        <div class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3 v9 l5 5"/></svg></div>
+        <div class="chip"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 20c1-4 5-6 8-6s7 2 8 6"/></svg></div>
+      </div>
+
+      <div class="hero">
+        <div class="hero-label-row">
+          <span class="hero-dot"></span>
+          <span class="hero-label">YOU ARE OWED</span>
+          <span class="hero-settle">Settle →</span>
+        </div>
+        <div class="hero-amount">+€40.00</div>
+        <div class="hero-sub">
+          <div>
+            <div class="hero-sub-label">YOU OWE</div>
+            <div class="hero-sub-amt amt-neg">€10.00</div>
+          </div>
+          <div class="divider"></div>
+          <div class="right">
+            <div class="hero-sub-label">OWED TO YOU</div>
+            <div class="hero-sub-amt amt-pos">€50.00</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="personal">
+        <div class="personal-ico">
+          <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 20c1-4 5-6 8-6s7 2 8 6"/></svg>
+        </div>
+        <div>
+          <div class="personal-title">My Expenses</div>
+          <div class="personal-sub">Solo spending · just for you</div>
+        </div>
+        <div class="personal-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+      </div>
+
+      <div class="section">
+        <span class="section-label">SHARED GROUPS</span>
+        <span class="section-count">3</span>
+      </div>
+
+      <div class="group">
+        <div class="group-emoji">🏠</div>
+        <div>
+          <div class="group-name">Roommates</div>
+          <div class="group-sub">Tap to open</div>
+        </div>
+        <div class="chev">›</div>
+      </div>
+
+      <div class="group">
+        <div class="group-emoji">🍕</div>
+        <div>
+          <div class="group-name">Dinner crew</div>
+          <div class="group-sub">Tap to open</div>
+        </div>
+        <div class="chev">›</div>
+      </div>
+
+      <div class="group">
+        <div class="group-emoji">🏖️</div>
+        <div>
+          <div class="group-name">Barcelona trip</div>
+          <div class="group-sub">Tap to open</div>
+        </div>
+        <div class="chev">›</div>
+      </div>
+
+      <div class="fab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" width="20" height="20"><path d="M12 5v14M5 12h14"/></svg>
+        New Group
+      </div>
+      <div class="bottom-bar"></div>
+    </div>
+  </div>
+  <div class="phone-label">Home</div>
+  </div>
+
+  <!-- ═════════════ PAYWALL ═════════════ -->
+  <div>
+  <div class="phone">
+    <div class="screen">
+      <div class="notch"></div>
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 8h2v8H2zM6 6h2v10H6zM10 4h2v12h-2zM14 2h2v14h-2zM18 5h2v11h-2z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 2.7 6.8 2 11l10 10 10-10c-.7-4.2-5-7-10-7z" fill-opacity="0.5"/></svg>
+          <span>74</span>
+        </span>
+      </div>
+
+      <!-- dim home behind -->
+      <div class="app-bar">
+        <div class="logo-mini">S</div>
+        <div class="app-name">SplitWise</div>
+        <div class="spacer"></div>
+        <div class="chip"></div>
+        <div class="chip"></div>
+      </div>
+      <div class="hero" style="opacity:0.35;">
+        <div class="hero-label-row"><span class="hero-dot"></span><span class="hero-label">YOU ARE OWED</span></div>
+        <div class="hero-amount">+€40.00</div>
+        <div class="hero-sub"><div></div><div class="divider"></div><div class="right"></div></div>
+      </div>
+
+      <div class="paywall">
+        <div class="paywall-sheet">
+          <div class="handle"></div>
+          <div class="pay-logo">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11 21h-1l1-7H7.5c-.58 0-.57-.32-.38-.66.19-.34.05-.08.07-.12C8.48 10.94 10.42 7.54 13 3h1l-1 7h3.5c.49 0 .56.33.47.51l-.07.15C12.96 17.55 11 21 11 21z"/></svg>
+          </div>
+          <div class="pay-title">SplitWise Pro</div>
+          <div class="pay-sub">You've used your free voice expense notes this month.</div>
+
+          <div class="pay-benefit">
+            <div class="bn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5a2 2 0 0 0-2 2v14l4-4h12a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2z"/></svg></div>
+            <div>
+              <div class="bn-title">Unlimited receipt scans</div>
+              <div class="bn-sub">OCR every receipt all month, no caps.</div>
+            </div>
+          </div>
+          <div class="pay-benefit">
+            <div class="bn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5-3c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg></div>
+            <div>
+              <div class="bn-title">Unlimited voice notes</div>
+              <div class="bn-sub">AI-parsed expenses by voice — no monthly limit.</div>
+            </div>
+          </div>
+          <div class="pay-benefit">
+            <div class="bn-icon"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z"/></svg></div>
+            <div>
+              <div class="bn-title">Future AI features</div>
+              <div class="bn-sub">Anything new we add to the AI pipeline is included.</div>
+            </div>
+          </div>
+
+          <div class="price-card">
+            <div class="price-row">
+              <span class="tag">MONTHLY</span>
+              <span class="price-big">€2.99</span>
+              <span class="price-sm">/ mo</span>
+            </div>
+            <div class="cta-btn">Start Pro</div>
+          </div>
+          <div class="maybe-later">Maybe later</div>
+        </div>
+      </div>
+
+      <div class="bottom-bar"></div>
+    </div>
+  </div>
+  <div class="phone-label">Paywall (after free quota)</div>
+  </div>
+
+  <!-- ═════════════ SETTLE ═════════════ -->
+  <div>
+  <div class="phone">
+    <div class="screen">
+      <div class="notch"></div>
+      <div class="status">
+        <span>9:41</span>
+        <span class="right">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 8h2v8H2zM6 6h2v10H6zM10 4h2v12h-2zM14 2h2v14h-2zM18 5h2v11h-2z"/></svg>
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C7 4 2.7 6.8 2 11l10 10 10-10c-.7-4.2-5-7-10-7z" fill-opacity="0.5"/></svg>
+          <span>74</span>
+        </span>
+      </div>
+
+      <div class="app-bar simple">
+        <div class="back-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg></div>
+        <div class="settle-title">Things to Settle</div>
+      </div>
+
+      <div class="net-card">
+        <div class="net-label">NET POSITION</div>
+        <div class="net-amount" style="color: var(--mint);">+€40.00</div>
+        <div class="net-row">
+          <div class="net-cell">
+            <div class="net-cell-label"><span class="dot" style="background: var(--negative);"></span> YOU OWE</div>
+            <div class="net-cell-amt" style="color: var(--text);">€10.00</div>
+            <div class="net-cell-sub">1 payment</div>
+          </div>
+          <div class="net-cell" style="border-left: 1px solid var(--border);">
+            <div class="net-cell-label"><span class="dot" style="background: var(--mint);"></span> OWED TO YOU</div>
+            <div class="net-cell-amt" style="color: var(--text);">€50.00</div>
+            <div class="net-cell-sub">2 payments</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settle-section">YOU OWE</div>
+      <div style="height: 8px;"></div>
+
+      <div class="settle-row">
+        <div class="settle-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></div>
+        <div style="flex:1;">
+          <div class="settle-name">Pay <b>Alice</b></div>
+          <div class="settle-grp">💰 test</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="settle-amt neg">€10.00</div>
+          <div class="pay-pill">Pay</div>
+        </div>
+      </div>
+
+      <div class="settle-section" style="margin-top: 18px;">OWED TO YOU</div>
+      <div style="height: 8px;"></div>
+
+      <div class="settle-row">
+        <div class="settle-ico pos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div>
+        <div style="flex:1;">
+          <div class="settle-name">Collect from <b>Marc</b></div>
+          <div class="settle-grp">🏖️ Barcelona trip</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="settle-amt pos">€30.00</div>
+          <div class="received-pill">Mark received</div>
+        </div>
+      </div>
+
+      <div class="settle-row">
+        <div class="settle-ico pos"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12l7 7 7-7"/></svg></div>
+        <div style="flex:1;">
+          <div class="settle-name">Collect from <b>Sofia</b></div>
+          <div class="settle-grp">🍕 Dinner crew</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="settle-amt pos">€20.00</div>
+          <div class="received-pill">Mark received</div>
+        </div>
+      </div>
+
+      <div class="bottom-bar"></div>
+    </div>
+  </div>
+  <div class="phone-label">Things to Settle</div>
+  </div>
+
+</div>
+</body>
+</html>
